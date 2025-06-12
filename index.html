@@ -864,6 +864,93 @@
             animation: fadeIn 0.3s ease-out;
         }
 
+        /* Threshold Slider Styles */
+        .threshold-slider-container {
+            padding: 20px;
+            background: var(--gray-50);
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .threshold-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .threshold-number {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--warning-color);
+            min-width: 40px;
+            text-align: right;
+        }
+
+        .slider-container {
+            position: relative;
+        }
+
+        .threshold-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: var(--gray-200);
+            outline: none;
+            margin: 20px 0;
+        }
+
+        .threshold-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--warning-color);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .threshold-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+        }
+
+        .threshold-slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--warning-color);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .threshold-slider::-moz-range-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+        }
+
+        .threshold-slider::-moz-range-track {
+            height: 8px;
+            border-radius: 4px;
+            background: var(--gray-200);
+            border: none;
+        }
+
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--gray-500);
+            margin-top: 8px;
+        }
+
         /* Utility Classes */
         .text-center { text-align: center; }
         .text-right { text-align: right; }
@@ -1384,6 +1471,45 @@
                     <i class="fas fa-link"></i>
                     Generate Invite Link
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Low Stock Settings Modal -->
+    <div id="lowStockModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Low Stock Alert</h2>
+                <button class="modal-close" onclick="closeModal('lowStockModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-4">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 60px; color: var(--warning-color); margin-bottom: 12px;"></i>
+                    <h3>Default Low Stock Alert</h3>
+                    <p style="color: var(--gray-500); text-align: center;">Set the default threshold for low stock alerts across all items. Individual items can have their own custom thresholds.</p>
+                </div>
+                
+                <div class="threshold-slider-container">
+                    <div class="threshold-display">
+                        <span>Alert when quantity is at or below:</span>
+                        <span id="thresholdValue" class="threshold-number">5</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <input type="range" id="thresholdSlider" class="threshold-slider" min="0" max="50" value="5" step="1">
+                        <div class="slider-labels">
+                            <span>0 (Disabled)</span>
+                            <span>50</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button class="btn btn-primary" onclick="saveThresholdSetting()" style="background: var(--warning-color);">
+                        <i class="fas fa-save"></i>
+                        Save Default Threshold
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1961,6 +2087,11 @@
                 updateItemPicker(e.target.value);
             });
 
+            // Threshold slider
+            document.getElementById('thresholdSlider')?.addEventListener('input', (e) => {
+                document.getElementById('thresholdValue').textContent = e.target.value;
+            });
+
             // Window resize
             window.addEventListener('resize', () => {
                 if (window.innerWidth >= 768) {
@@ -2273,12 +2404,22 @@
 
         // Settings
         function showLowStockSettings() {
-            // This would open a settings modal
-            const newThreshold = prompt('Enter new default low stock threshold:', appState.currentCompany?.lowStockThreshold || 5);
-            if (newThreshold && !isNaN(newThreshold)) {
-                appState.currentCompany.lowStockThreshold = parseInt(newThreshold);
+            const currentThreshold = appState.currentCompany?.lowStockThreshold || 5;
+            document.getElementById('thresholdSlider').value = currentThreshold;
+            document.getElementById('thresholdValue').textContent = currentThreshold;
+            showModal('lowStockModal');
+        }
+
+        function saveThresholdSetting() {
+            const newThreshold = parseInt(document.getElementById('thresholdSlider').value);
+            if (appState.currentCompany) {
+                appState.currentCompany.lowStockThreshold = newThreshold;
                 localStorage.setItem('currentCompany', JSON.stringify(appState.currentCompany));
                 updateSettings();
+                closeModal('lowStockModal');
+                
+                // Show success message
+                alert(`Default low stock threshold updated to ${newThreshold}`);
             }
         }
 
