@@ -1539,12 +1539,29 @@
         document.addEventListener('DOMContentLoaded', function() {
             checkAuthStatus();
             setupEventListeners();
+            checkAPIHealth();
             
             // Check for responsive design
             if (window.innerWidth >= 768) {
                 document.querySelector('.sidebar').style.display = 'flex';
             }
         });
+
+        // Check API Health
+        async function checkAPIHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ API Health Check:', data.status);
+                } else {
+                    console.log('⚠️ API Health Check Failed - Status:', response.status);
+                }
+            } catch (error) {
+                console.log('❌ API Health Check Error:', error.message);
+                console.log('💡 Using demo mode for offline functionality');
+            }
+        }
 
         // Authentication Functions
         function checkAuthStatus() {
@@ -1746,33 +1763,66 @@
         }
 
         async function loadItems() {
-            const response = await fetch(`${API_BASE}/api/items`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
-            });
-            
-            if (response.ok) {
-                appState.items = await response.json();
+            try {
+                const response = await fetch(`${API_BASE}/api/items`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+                });
+                
+                if (response.ok) {
+                    appState.items = await response.json();
+                    console.log('✅ Items loaded from API:', appState.items.length);
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                console.error('❌ Failed to load items from API:', error);
+                // Only use demo data if we're in demo mode
+                if (localStorage.getItem('authToken') === 'demo-token') {
+                    loadDemoItems();
+                }
             }
         }
 
         async function loadActivities() {
-            const response = await fetch(`${API_BASE}/api/activities`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
-            });
-            
-            if (response.ok) {
-                appState.activities = await response.json();
+            try {
+                const response = await fetch(`${API_BASE}/api/activities`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+                });
+                
+                if (response.ok) {
+                    appState.activities = await response.json();
+                    console.log('✅ Activities loaded from API:', appState.activities.length);
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                console.error('❌ Failed to load activities from API:', error);
+                // Only use demo data if we're in demo mode
+                if (localStorage.getItem('authToken') === 'demo-token') {
+                    loadDemoActivities();
+                }
             }
         }
 
         async function loadUsers() {
             if (appState.currentUser?.role === 'admin') {
-                const response = await fetch(`${API_BASE}/api/users`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
-                });
-                
-                if (response.ok) {
-                    appState.users = await response.json();
+                try {
+                    const response = await fetch(`${API_BASE}/api/users`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+                    });
+                    
+                    if (response.ok) {
+                        appState.users = await response.json();
+                        console.log('✅ Users loaded from API:', appState.users.length);
+                    } else {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                } catch (error) {
+                    console.error('❌ Failed to load users from API:', error);
+                    // Only use demo data if we're in demo mode
+                    if (localStorage.getItem('authToken') === 'demo-token') {
+                        loadDemoUsers();
+                    }
                 }
             }
         }
@@ -1829,7 +1879,7 @@
                         <div class="item-name">${item.name}</div>
                         <div class="item-meta">
                             <span class="item-barcode">${item.barcode}</span>
-                            <span class="item-date">${formatDate(item.updatedAt)}</span>
+                            <span class="item-date">${formatDate(item.updated_at)}</span>
                         </div>
                     </div>
                     <div class="item-quantity">
@@ -1857,11 +1907,11 @@
                 <div class="activity-item">
                     <div class="activity-header">
                         <span class="activity-type activity-${activity.type}">${activity.type.toUpperCase()}</span>
-                        <span class="activity-item-name">${activity.itemName}</span>
+                        <span class="activity-item-name">${activity.item_name}</span>
                     </div>
-                    ${activity.sessionTitle ? `<div class="activity-session">📋 ${activity.sessionTitle}</div>` : ''}
+                    ${activity.session_title ? `<div class="activity-session">📋 ${activity.session_title}</div>` : ''}
                     <div class="activity-description">${getActivityDescription(activity)}</div>
-                    <div class="activity-meta">By ${activity.userName} • ${formatDate(activity.createdAt)}</div>
+                    <div class="activity-meta">By ${activity.user_name} • ${formatDate(activity.created_at)}</div>
                 </div>
             `).join('');
         }
@@ -2006,9 +2056,9 @@
                 case 'created':
                     return `Created with initial quantity of ${activity.quantity}`;
                 case 'added':
-                    return `Added ${activity.quantity} items (was ${activity.oldQuantity})`;
+                    return `Added ${activity.quantity} items (was ${activity.old_quantity})`;
                 case 'removed':
-                    return `Removed ${activity.quantity} items (was ${activity.oldQuantity})`;
+                    return `Removed ${activity.quantity} items (was ${activity.old_quantity})`;
                 case 'deleted':
                     return `Deleted item (had ${activity.quantity} items)`;
                 default:
@@ -2147,26 +2197,59 @@
         }
 
         async function createItem(name, quantity) {
-            const barcode = generateBarcode();
-            const newItem = {
-                id: Date.now().toString(),
-                name,
-                quantity,
-                barcode,
-                updatedAt: new Date().toISOString()
-            };
+            const token = localStorage.getItem('authToken');
             
-            appState.items.push(newItem);
-            
-            // Add activity
-            appState.activities.unshift({
-                id: Date.now().toString(),
-                itemName: name,
-                type: 'created',
-                quantity,
-                userName: appState.currentUser.name,
-                createdAt: new Date().toISOString()
-            });
+            if (token === 'demo-token') {
+                // Demo mode - local storage only
+                const barcode = generateBarcode();
+                const newItem = {
+                    id: Date.now().toString(),
+                    name,
+                    quantity,
+                    barcode,
+                    updated_at: new Date().toISOString()
+                };
+                
+                appState.items.push(newItem);
+                
+                // Add activity
+                appState.activities.unshift({
+                    id: Date.now().toString(),
+                    item_name: name,
+                    type: 'created',
+                    quantity,
+                    user_name: appState.currentUser.name,
+                    created_at: new Date().toISOString()
+                });
+            } else {
+                // Real API mode
+                try {
+                    const barcode = generateBarcode();
+                    const response = await fetch(`${API_BASE}/api/items`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ name, quantity, barcode })
+                    });
+                    
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.error || 'Failed to create item');
+                    }
+                    
+                    const newItem = await response.json();
+                    console.log('✅ Item created via API:', newItem.name);
+                    
+                    // Reload data to get updated lists
+                    await loadData();
+                } catch (error) {
+                    console.error('❌ Error creating item:', error);
+                    alert('Failed to create item: ' + error.message);
+                    return;
+                }
+            }
             
             updateUI();
         }
@@ -2192,60 +2275,123 @@
             document.getElementById('adjustQuantity').textContent = appState.adjustQuantity;
         }
 
-        function performAdjustment() {
+        async function performAdjustment() {
             if (!appState.selectedItem) return;
             
             const change = appState.adjustAction === 'add' ? appState.adjustQuantity : -appState.adjustQuantity;
             const newQuantity = Math.max(0, appState.selectedItem.quantity + change);
+            const token = localStorage.getItem('authToken');
             
-            // Update item
-            const itemIndex = appState.items.findIndex(i => i.id === appState.selectedItem.id);
-            if (itemIndex !== -1) {
-                const oldQuantity = appState.items[itemIndex].quantity;
-                appState.items[itemIndex].quantity = newQuantity;
-                appState.items[itemIndex].updatedAt = new Date().toISOString();
-                
-                // Add activity
-                appState.activities.unshift({
-                    id: Date.now().toString(),
-                    itemName: appState.selectedItem.name,
-                    type: appState.adjustAction === 'add' ? 'added' : 'removed',
-                    quantity: appState.adjustQuantity,
-                    oldQuantity,
-                    userName: appState.currentUser.name,
-                    createdAt: new Date().toISOString()
-                });
-                
-                updateUI();
-                closeModal('itemDetailModal');
+            if (token === 'demo-token') {
+                // Demo mode - local storage only
+                const itemIndex = appState.items.findIndex(i => i.id === appState.selectedItem.id);
+                if (itemIndex !== -1) {
+                    const oldQuantity = appState.items[itemIndex].quantity;
+                    appState.items[itemIndex].quantity = newQuantity;
+                    appState.items[itemIndex].updated_at = new Date().toISOString();
+                    
+                    // Add activity
+                    appState.activities.unshift({
+                        id: Date.now().toString(),
+                        item_name: appState.selectedItem.name,
+                        type: appState.adjustAction === 'add' ? 'added' : 'removed',
+                        quantity: appState.adjustQuantity,
+                        old_quantity: oldQuantity,
+                        user_name: appState.currentUser.name,
+                        created_at: new Date().toISOString()
+                    });
+                    
+                    updateUI();
+                    closeModal('itemDetailModal');
+                }
+            } else {
+                // Real API mode
+                try {
+                    const response = await fetch(`${API_BASE}/api/items`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ 
+                            id: appState.selectedItem.id, 
+                            quantity: newQuantity 
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.error || 'Failed to update item');
+                    }
+                    
+                    console.log('✅ Item updated via API');
+                    
+                    // Reload data to get updated lists
+                    await loadData();
+                    closeModal('itemDetailModal');
+                } catch (error) {
+                    console.error('❌ Error updating item:', error);
+                    alert('Failed to update item: ' + error.message);
+                }
             }
         }
 
-        function performQuickAdjustment() {
+        async function performQuickAdjustment() {
             if (!appState.selectedItem) return;
             
             const change = appState.selectedItem.quantity > 0 ? -1 : 1;
             const newQuantity = Math.max(0, appState.selectedItem.quantity + change);
+            const token = localStorage.getItem('authToken');
             
-            // Update item
-            const itemIndex = appState.items.findIndex(i => i.id === appState.selectedItem.id);
-            if (itemIndex !== -1) {
-                const oldQuantity = appState.items[itemIndex].quantity;
-                appState.items[itemIndex].quantity = newQuantity;
-                appState.items[itemIndex].updatedAt = new Date().toISOString();
-                
-                // Add activity
-                appState.activities.unshift({
-                    id: Date.now().toString(),
-                    itemName: appState.selectedItem.name,
-                    type: change > 0 ? 'added' : 'removed',
-                    quantity: Math.abs(change),
-                    oldQuantity,
-                    userName: appState.currentUser.name,
-                    createdAt: new Date().toISOString()
-                });
-                
-                updateUI();
+            if (token === 'demo-token') {
+                // Demo mode - local storage only
+                const itemIndex = appState.items.findIndex(i => i.id === appState.selectedItem.id);
+                if (itemIndex !== -1) {
+                    const oldQuantity = appState.items[itemIndex].quantity;
+                    appState.items[itemIndex].quantity = newQuantity;
+                    appState.items[itemIndex].updated_at = new Date().toISOString();
+                    
+                    // Add activity
+                    appState.activities.unshift({
+                        id: Date.now().toString(),
+                        item_name: appState.selectedItem.name,
+                        type: change > 0 ? 'added' : 'removed',
+                        quantity: Math.abs(change),
+                        old_quantity: oldQuantity,
+                        user_name: appState.currentUser.name,
+                        created_at: new Date().toISOString()
+                    });
+                    
+                    updateUI();
+                }
+            } else {
+                // Real API mode
+                try {
+                    const response = await fetch(`${API_BASE}/api/items`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ 
+                            id: appState.selectedItem.id, 
+                            quantity: newQuantity 
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.error || 'Failed to update item');
+                    }
+                    
+                    console.log('✅ Item quick-adjusted via API');
+                    
+                    // Reload data to get updated lists
+                    await loadData();
+                } catch (error) {
+                    console.error('❌ Error quick-adjusting item:', error);
+                    alert('Failed to adjust item: ' + error.message);
+                }
             }
         }
 
@@ -2317,36 +2463,78 @@
             const sessionTitle = document.getElementById('sessionTitle').value;
             if (!sessionTitle || appState.batchItems.length === 0) return;
             
-            // Process each item
-            appState.batchItems.forEach(batchItem => {
-                const change = batchItem.action === 'add' ? batchItem.quantityChange : -batchItem.quantityChange;
-                const itemIndex = appState.items.findIndex(i => i.id === batchItem.item.id);
-                
-                if (itemIndex !== -1) {
-                    const oldQuantity = appState.items[itemIndex].quantity;
-                    appState.items[itemIndex].quantity = Math.max(0, oldQuantity + change);
-                    appState.items[itemIndex].updatedAt = new Date().toISOString();
+            const token = localStorage.getItem('authToken');
+            
+            if (token === 'demo-token') {
+                // Demo mode - local storage only
+                appState.batchItems.forEach(batchItem => {
+                    const change = batchItem.action === 'add' ? batchItem.quantityChange : -batchItem.quantityChange;
+                    const itemIndex = appState.items.findIndex(i => i.id === batchItem.item.id);
                     
-                    // Add activity
-                    appState.activities.unshift({
-                        id: Date.now().toString(),
-                        itemName: batchItem.item.name,
-                        type: batchItem.action === 'add' ? 'added' : 'removed',
-                        quantity: batchItem.quantityChange,
-                        oldQuantity,
-                        userName: appState.currentUser.name,
-                        createdAt: new Date().toISOString(),
-                        sessionTitle
+                    if (itemIndex !== -1) {
+                        const oldQuantity = appState.items[itemIndex].quantity;
+                        appState.items[itemIndex].quantity = Math.max(0, oldQuantity + change);
+                        appState.items[itemIndex].updated_at = new Date().toISOString();
+                        
+                        // Add activity
+                        appState.activities.unshift({
+                            id: Date.now().toString(),
+                            item_name: batchItem.item.name,
+                            type: batchItem.action === 'add' ? 'added' : 'removed',
+                            quantity: batchItem.quantityChange,
+                            old_quantity: oldQuantity,
+                            user_name: appState.currentUser.name,
+                            created_at: new Date().toISOString(),
+                            session_title: sessionTitle
+                        });
+                    }
+                });
+                
+                // Reset batch
+                appState.batchItems = [];
+                document.getElementById('sessionTitle').value = '';
+                
+                updateUI();
+                alert('Operation processed successfully!');
+            } else {
+                // Real API mode
+                try {
+                    const items = appState.batchItems.map(batchItem => ({
+                        itemId: batchItem.item.id,
+                        quantityChange: batchItem.action === 'add' ? batchItem.quantityChange : -batchItem.quantityChange
+                    }));
+                    
+                    const response = await fetch(`${API_BASE}/api/activities/batch`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ 
+                            sessionTitle, 
+                            items 
+                        })
                     });
+                    
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.error || 'Failed to process batch operation');
+                    }
+                    
+                    console.log('✅ Batch operation processed via API');
+                    
+                    // Reset batch
+                    appState.batchItems = [];
+                    document.getElementById('sessionTitle').value = '';
+                    
+                    // Reload data to get updated lists
+                    await loadData();
+                    alert('Operation processed successfully!');
+                } catch (error) {
+                    console.error('❌ Error processing batch operation:', error);
+                    alert('Failed to process operation: ' + error.message);
                 }
-            });
-            
-            // Reset batch
-            appState.batchItems = [];
-            document.getElementById('sessionTitle').value = '';
-            
-            updateUI();
-            alert('Operation processed successfully!');
+            }
         }
 
         // Barcode Functions
