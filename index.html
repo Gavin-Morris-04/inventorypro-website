@@ -1187,7 +1187,17 @@
                 <!-- Activity View -->
                 <div id="activity-view" class="view">
                     <div class="header">
-                        <h1>Activity Log</h1>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h1>Activity Log</h1>
+                                <p id="activityStats">Real-time inventory activity tracking</p>
+                            </div>
+                            <div class="header-actions">
+                                <button class="header-btn" onclick="refreshActivities()">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     
                     <div id="activityList">
@@ -1554,6 +1564,16 @@
                 if (response.ok) {
                     const data = await response.json();
                     console.log('✅ API Health Check:', data.status);
+                    
+                    // Also test auth endpoint if we have a token
+                    const token = localStorage.getItem('authToken');
+                    if (token && token !== 'demo-token') {
+                        console.log('🔑 Testing auth with current token...');
+                        const authTest = await fetch(`${API_BASE}/api/activities`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        console.log('🔑 Auth test result:', authTest.status, authTest.ok ? 'SUCCESS' : 'FAILED');
+                    }
                 } else {
                     console.log('⚠️ API Health Check Failed - Status:', response.status);
                 }
@@ -1785,21 +1805,29 @@
 
         async function loadActivities() {
             try {
+                console.log('🔄 Loading activities from API...');
                 const response = await fetch(`${API_BASE}/api/activities`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
                 });
                 
                 if (response.ok) {
                     appState.activities = await response.json();
-                    console.log('✅ Activities loaded from API:', appState.activities.length);
+                    console.log('✅ Activities loaded from API:', appState.activities.length, appState.activities);
                 } else {
-                    throw new Error(`HTTP ${response.status}`);
+                    const errorData = await response.json();
+                    console.error('❌ API Error loading activities:', response.status, errorData);
+                    throw new Error(`HTTP ${response.status}: ${errorData.error || 'Failed to load activities'}`);
                 }
             } catch (error) {
                 console.error('❌ Failed to load activities from API:', error);
                 // Only use demo data if we're in demo mode
                 if (localStorage.getItem('authToken') === 'demo-token') {
+                    console.log('🎮 Loading demo activities...');
                     loadDemoActivities();
+                } else {
+                    // For real API failures, show empty state but don't hide the error
+                    appState.activities = [];
+                    console.error('🚨 Real API failed to load activities - check network/CORS/auth');
                 }
             }
         }
@@ -1893,27 +1921,53 @@
         function updateActivityList() {
             const container = document.getElementById('activityList');
             
+            console.log('🔄 Updating activity list. Activities count:', appState.activities.length);
+            
             if (appState.activities.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-clock"></i>
                         <h3>No activity recorded yet</h3>
+                        <p>Activities will appear here when you create, update, or delete items</p>
+                        <button class="btn btn-primary" onclick="refreshActivities()" style="margin-top: 20px;">
+                            <i class="fas fa-refresh"></i>
+                            Refresh Activities
+                        </button>
                     </div>
                 `;
                 return;
             }
             
-            container.innerHTML = appState.activities.map(activity => `
-                <div class="activity-item">
-                    <div class="activity-header">
-                        <span class="activity-type activity-${activity.type}">${activity.type.toUpperCase()}</span>
-                        <span class="activity-item-name">${activity.item_name}</span>
+            console.log('✅ Rendering', appState.activities.length, 'activities');
+            
+            container.innerHTML = appState.activities.map(activity => {
+                console.log('🔍 Rendering activity:', activity);
+                return `
+                    <div class="activity-item">
+                        <div class="activity-header">
+                            <span class="activity-type activity-${activity.type}">${activity.type.toUpperCase()}</span>
+                            <span class="activity-item-name">${activity.item_name}</span>
+                        </div>
+                        ${activity.session_title ? `<div class="activity-session">📋 ${activity.session_title}</div>` : ''}
+                        <div class="activity-description">${getActivityDescription(activity)}</div>
+                        <div class="activity-meta">By ${activity.user_name} • ${formatDate(activity.created_at)}</div>
                     </div>
-                    ${activity.session_title ? `<div class="activity-session">📋 ${activity.session_title}</div>` : ''}
-                    <div class="activity-description">${getActivityDescription(activity)}</div>
-                    <div class="activity-meta">By ${activity.user_name} • ${formatDate(activity.created_at)}</div>
+                `;
+            }).join('');
+        }
+
+        // Add refresh function
+        async function refreshActivities() {
+            console.log('🔄 Manually refreshing activities...');
+            document.getElementById('activityList').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 10px;">Refreshing activities...</p>
                 </div>
-            `).join('');
+            `;
+            
+            await loadActivities();
+            updateActivityList();
         }
 
         function updateTeamList() {
@@ -2082,10 +2136,13 @@
         function setupEventListeners() {
             // Navigation
             document.querySelectorAll('.nav-item, .sidebar-item').forEach(item => {
-                item.addEventListener('click', (e) => {
+                item.addEventListener('click', async (e) => {
                     e.preventDefault();
                     const view = e.currentTarget.dataset.view;
-                    if (view) switchView(view);
+                    if (view) {
+                        console.log('🔄 Switching to view:', view);
+                        await switchView(view);
+                    }
                 });
             });
 
@@ -2153,7 +2210,7 @@
         }
 
         // View Management
-        function switchView(viewName) {
+        async function switchView(viewName) {
             appState.currentView = viewName;
             
             // Update active states
@@ -2162,6 +2219,25 @@
             
             document.getElementById(`${viewName}-view`).classList.add('active');
             document.querySelectorAll(`[data-view="${viewName}"]`).forEach(item => item.classList.add('active'));
+            
+            // Refresh data when switching to activity view
+            if (viewName === 'activity') {
+                console.log('🔄 Switched to activity view - refreshing data...');
+                document.getElementById('activityList').innerHTML = `
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p style="margin-top: 10px;">Loading activities...</p>
+                    </div>
+                `;
+                await loadActivities();
+                updateActivityList();
+            }
+            
+            // Refresh team data when switching to team view (admin only)
+            if (viewName === 'team' && appState.currentUser?.role === 'admin') {
+                await loadUsers();
+                updateTeamList();
+            }
         }
 
         // Modal Management
@@ -2242,8 +2318,11 @@
                     const newItem = await response.json();
                     console.log('✅ Item created via API:', newItem.name);
                     
-                    // Reload data to get updated lists
-                    await loadData();
+                    // Reload data to get updated lists including activities
+                    await Promise.all([
+                        loadItems(),
+                        loadActivities()
+                    ]);
                 } catch (error) {
                     console.error('❌ Error creating item:', error);
                     alert('Failed to create item: ' + error.message);
@@ -2326,8 +2405,11 @@
                     
                     console.log('✅ Item updated via API');
                     
-                    // Reload data to get updated lists
-                    await loadData();
+                    // Reload data to get updated lists including activities
+                    await Promise.all([
+                        loadItems(),
+                        loadActivities()
+                    ]);
                     closeModal('itemDetailModal');
                 } catch (error) {
                     console.error('❌ Error updating item:', error);
@@ -2386,8 +2468,11 @@
                     
                     console.log('✅ Item quick-adjusted via API');
                     
-                    // Reload data to get updated lists
-                    await loadData();
+                    // Reload data to get updated lists including activities
+                    await Promise.all([
+                        loadItems(),
+                        loadActivities()
+                    ]);
                 } catch (error) {
                     console.error('❌ Error quick-adjusting item:', error);
                     alert('Failed to adjust item: ' + error.message);
@@ -2527,8 +2612,11 @@
                     appState.batchItems = [];
                     document.getElementById('sessionTitle').value = '';
                     
-                    // Reload data to get updated lists
-                    await loadData();
+                    // Reload data to get updated lists including activities
+                    await Promise.all([
+                        loadItems(),
+                        loadActivities()
+                    ]);
                     alert('Operation processed successfully!');
                 } catch (error) {
                     console.error('❌ Error processing batch operation:', error);
@@ -2621,6 +2709,25 @@
             // This would show item-specific activity log
             alert('Item activity log would be shown here');
         }
+
+        // Debug function - can be called from browser console
+        window.debugInventoryApp = function() {
+            console.log('🐛 DEBUG: Current App State');
+            console.log('- Auth Token:', localStorage.getItem('authToken') ? 'Present' : 'Missing');
+            console.log('- Current User:', appState.currentUser);
+            console.log('- Current Company:', appState.currentCompany);
+            console.log('- Items Count:', appState.items.length);
+            console.log('- Activities Count:', appState.activities.length);
+            console.log('- Activities Data:', appState.activities);
+            console.log('- Current View:', appState.currentView);
+            console.log('- API Base URL:', API_BASE);
+            
+            // Test API connectivity
+            fetch(`${API_BASE}/health`)
+                .then(r => r.json())
+                .then(data => console.log('- API Health:', data))
+                .catch(e => console.log('- API Health: ERROR', e.message));
+        };
     </script>
 </body>
 </html>
