@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory Pro - Professional Inventory Management</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         :root {
             --primary-color: #8B5CF6;
@@ -43,6 +46,119 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+        }
+
+        /* Hide/Show based on current view */
+        .main-app, .invite-app {
+            display: none;
+        }
+
+        .main-app.active, .invite-app.active {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Invite App Styles */
+        .invite-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .invite-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            backdrop-filter: blur(16px);
+        }
+
+        .invite-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .invite-icon {
+            font-size: 60px;
+            color: var(--primary-color);
+            margin-bottom: 16px;
+        }
+
+        .invite-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .invite-subtitle {
+            color: var(--gray-500);
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        .invite-details {
+            background: rgba(139, 92, 246, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .invite-detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .invite-detail-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .invite-detail-label {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .invite-detail-value {
+            color: var(--gray-700);
+        }
+
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .status-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status-icon.success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+        }
+
+        .status-icon.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger-color);
+        }
+
+        .status-icon i {
+            font-size: 24px;
         }
 
         /* Authentication Styles */
@@ -143,18 +259,40 @@
             transform: translateY(-1px);
         }
 
+        .btn-primary:disabled {
+            background: var(--gray-400);
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .btn-link {
             background: none;
             color: var(--primary-color);
             text-decoration: none;
             padding: 10px;
             font-weight: 500;
+            border: none;
+            cursor: pointer;
         }
 
         .error-message {
             color: var(--danger-color);
-            font-size: 12px;
-            margin-top: 5px;
+            font-size: 14px;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .success-message {
+            color: var(--success-color);
+            font-size: 14px;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(16, 185, 129, 0.2);
         }
 
         .demo-info {
@@ -169,14 +307,9 @@
 
         /* Main App Styles */
         .main-app {
-            display: none;
             flex-direction: column;
             height: 100vh;
             background: white;
-        }
-
-        .main-app.active {
-            display: flex;
         }
 
         /* Navigation */
@@ -967,347 +1100,355 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Authentication View -->
-        <div id="auth-view" class="auth-container">
-            <div class="auth-card">
-                <!-- Login Form -->
-                <div id="login-form">
-                    <div class="auth-logo">
-                        <i class="fas fa-boxes"></i>
-                        <h1>Inventory Pro</h1>
-                        <p>Professional Inventory Management</p>
+        <!-- Main Application (your existing inventory app) -->
+        <div id="main-app" class="main-app active">
+            <!-- Authentication View -->
+            <div id="auth-view" class="auth-container">
+                <div class="auth-card">
+                    <!-- Login Form -->
+                    <div id="login-form">
+                        <div class="auth-logo">
+                            <i class="fas fa-boxes"></i>
+                            <h1>Inventory Pro</h1>
+                            <p>Professional Inventory Management</p>
+                        </div>
+                        
+                        <form id="loginForm">
+                            <div class="form-group">
+                                <div class="form-label">
+                                    <i class="fas fa-user"></i>
+                                    Email
+                                </div>
+                                <input type="email" class="form-input" id="loginEmail" placeholder="user@company.com" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <div class="form-label">
+                                    <i class="fas fa-lock"></i>
+                                    Password
+                                </div>
+                                <input type="password" class="form-input" id="loginPassword" placeholder="Enter your password" required>
+                            </div>
+                            
+                            <div id="loginError" class="error-message" style="display: none;"></div>
+                            
+                            <button type="submit" class="btn btn-primary" id="loginBtn">
+                                <i class="fas fa-sign-in-alt"></i>
+                                Sign In
+                            </button>
+                        </form>
+                        
+                        <div class="text-center mt-4">
+                            <button class="btn-link" onclick="showRegistration()">Create New Company</button>
+                        </div>
+                        
+                        <div class="demo-info">
+                            Demo: demo@inventorypro.com / demo123
+                        </div>
                     </div>
                     
-                    <form id="loginForm">
-                        <div class="form-group">
-                            <div class="form-label">
-                                <i class="fas fa-user"></i>
-                                Email
-                            </div>
-                            <input type="email" class="form-input" id="loginEmail" placeholder="user@company.com" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <div class="form-label">
-                                <i class="fas fa-lock"></i>
-                                Password
-                            </div>
-                            <input type="password" class="form-input" id="loginPassword" placeholder="Enter your password" required>
-                        </div>
-                        
-                        <div id="loginError" class="error-message" style="display: none;"></div>
-                        
-                        <button type="submit" class="btn btn-primary" id="loginBtn">
-                            <i class="fas fa-sign-in-alt"></i>
-                            Sign In
-                        </button>
-                    </form>
-                    
-                    <div class="text-center mt-4">
-                        <button class="btn-link" onclick="showRegistration()">Create New Company</button>
-                    </div>
-                    
-                    <div class="demo-info">
-                        Demo: demo@inventorypro.com / demo123
-                    </div>
-                </div>
-                
-                <!-- Registration Form -->
-                <div id="register-form" style="display: none;">
-                    <div class="auth-logo">
-                        <i class="fas fa-building"></i>
-                        <h1>Create Your Company</h1>
-                        <p>Set up your inventory management system</p>
-                    </div>
-                    
-                    <form id="registerForm">
-                        <div class="form-group">
-                            <div class="form-label">
-                                <i class="fas fa-building"></i>
-                                Company Name
-                            </div>
-                            <input type="text" class="form-input" id="companyName" placeholder="Acme Corporation" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <div class="form-label">
-                                <i class="fas fa-user"></i>
-                                Admin Name
-                            </div>
-                            <input type="text" class="form-input" id="adminName" placeholder="John Doe" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <div class="form-label">
-                                <i class="fas fa-envelope"></i>
-                                Admin Email
-                            </div>
-                            <input type="email" class="form-input" id="adminEmail" placeholder="admin@company.com" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <div class="form-label">
-                                <i class="fas fa-lock"></i>
-                                Admin Password
-                            </div>
-                            <input type="password" class="form-input" id="adminPassword" placeholder="Create a strong password" required>
-                        </div>
-                        
-                        <div id="registerError" class="error-message" style="display: none;"></div>
-                        
-                        <button type="submit" class="btn btn-primary" id="registerBtn">
+                    <!-- Registration Form -->
+                    <div id="register-form" style="display: none;">
+                        <div class="auth-logo">
                             <i class="fas fa-building"></i>
-                            Create Company
-                        </button>
-                    </form>
-                    
-                    <div class="text-center mt-4">
-                        <button class="btn-link" onclick="showLogin()">Already have an account? Sign In</button>
+                            <h1>Create Your Company</h1>
+                            <p>Set up your inventory management system</p>
+                        </div>
+                        
+                        <form id="registerForm">
+                            <div class="form-group">
+                                <div class="form-label">
+                                    <i class="fas fa-building"></i>
+                                    Company Name
+                                </div>
+                                <input type="text" class="form-input" id="companyName" placeholder="Acme Corporation" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <div class="form-label">
+                                    <i class="fas fa-user"></i>
+                                    Admin Name
+                                </div>
+                                <input type="text" class="form-input" id="adminName" placeholder="John Doe" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <div class="form-label">
+                                    <i class="fas fa-envelope"></i>
+                                    Admin Email
+                                </div>
+                                <input type="email" class="form-input" id="adminEmail" placeholder="admin@company.com" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <div class="form-label">
+                                    <i class="fas fa-lock"></i>
+                                    Admin Password
+                                </div>
+                                <input type="password" class="form-input" id="adminPassword" placeholder="Create a strong password" required>
+                            </div>
+                            
+                            <div id="registerError" class="error-message" style="display: none;"></div>
+                            
+                            <button type="submit" class="btn btn-primary" id="registerBtn">
+                                <i class="fas fa-building"></i>
+                                Create Company
+                            </button>
+                        </form>
+                        
+                        <div class="text-center mt-4">
+                            <button class="btn-link" onclick="showLogin()">Already have an account? Sign In</button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Main Application -->
-        <div id="main-app" class="main-app">
-            <!-- Desktop Sidebar -->
-            <div class="sidebar" style="display: none;">
-                <div class="sidebar-header">
-                    <h2><i class="fas fa-boxes"></i> Inventory Pro</h2>
+            <!-- Inventory App Content -->
+            <div id="inventory-content" style="display: none;">
+                <!-- Desktop Sidebar -->
+                <div class="sidebar" style="display: none;">
+                    <div class="sidebar-header">
+                        <h2><i class="fas fa-boxes"></i> Inventory Pro</h2>
+                    </div>
+                    <nav class="sidebar-nav">
+                        <a href="#" class="sidebar-item active" data-view="items">
+                            <i class="fas fa-list"></i>
+                            Items
+                        </a>
+                        <a href="#" class="sidebar-item" data-view="operations">
+                            <i class="fas fa-boxes"></i>
+                            Operations
+                        </a>
+                        <a href="#" class="sidebar-item" data-view="activity">
+                            <i class="fas fa-clock"></i>
+                            Activity
+                        </a>
+                        <a href="#" class="sidebar-item" data-view="team" id="teamNavItem">
+                            <i class="fas fa-users"></i>
+                            Team
+                        </a>
+                        <a href="#" class="sidebar-item" data-view="settings">
+                            <i class="fas fa-cog"></i>
+                            Settings
+                        </a>
+                    </nav>
                 </div>
-                <nav class="sidebar-nav">
-                    <a href="#" class="sidebar-item active" data-view="items">
+
+                <!-- Content Area -->
+                <div class="content">
+                    <!-- Items View -->
+                    <div id="items-view" class="view active">
+                        <div class="header">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h1>All Items</h1>
+                                    <p id="itemsStats">Loading...</p>
+                                </div>
+                                <div class="header-actions">
+                                    <button class="header-btn" onclick="showBarcodeSearch()">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                    <button class="header-btn" onclick="simulateBarcodeScan()">
+                                        <i class="fas fa-camera"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="search-section">
+                            <div class="search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" class="search-input" id="itemSearch" placeholder="Search items by name or barcode...">
+                            </div>
+                            
+                            <div class="filter-tabs">
+                                <button class="filter-tab active" data-filter="all">All Items</button>
+                                <button class="filter-tab" data-filter="low">Low Stock</button>
+                                <button class="filter-tab" data-filter="out">Out of Stock</button>
+                            </div>
+                        </div>
+                        
+                        <div id="itemsList" class="items-list">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Operations View -->
+                    <div id="operations-view" class="view">
+                        <div class="batch-header">
+                            <h1>Inventory Operations</h1>
+                            <div class="form-group">
+                                <div class="form-label">
+                                    <i class="fas fa-file-text"></i>
+                                    Operation Title
+                                </div>
+                                <input type="text" class="batch-title-input" id="sessionTitle" placeholder="e.g., Weekly restocking, Damaged goods removal">
+                            </div>
+                        </div>
+                        
+                        <div class="batch-actions">
+                            <button class="btn batch-btn-scan" onclick="simulateBarcodeScan()">
+                                <i class="fas fa-camera"></i>
+                                Scan Item
+                            </button>
+                            <button class="btn batch-btn-browse" onclick="showItemPicker()">
+                                <i class="fas fa-list"></i>
+                                Browse Items
+                            </button>
+                            <button class="btn batch-btn-create" onclick="showAddItem()">
+                                <i class="fas fa-plus-circle"></i>
+                                Create New Item
+                            </button>
+                        </div>
+                        
+                        <div id="batchItems" class="batch-items">
+                            <div class="empty-state">
+                                <i class="fas fa-inbox"></i>
+                                <h3>No items selected</h3>
+                                <p>Scan or browse items to add them to this operation</p>
+                            </div>
+                        </div>
+                        
+                        <div class="p-4">
+                            <button class="btn btn-primary" id="processBatch" style="display: none;" onclick="processBatchOperation()">
+                                <i class="fas fa-check"></i>
+                                Process Operation
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Activity View -->
+                    <div id="activity-view" class="view">
+                        <div class="header">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h1>Activity Log</h1>
+                                    <p id="activityStats">Real-time inventory activity tracking</p>
+                                </div>
+                                <div class="header-actions">
+                                    <button class="header-btn" onclick="refreshActivities()">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="activityList">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Team View -->
+                    <div id="team-view" class="view">
+                        <div class="header">
+                            <div class="flex items-center justify-between">
+                                <h1>Team Management</h1>
+                                <button class="header-btn" onclick="showInviteGenerator()">
+                                    <i class="fas fa-link"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="teamList" class="p-4">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Settings View -->
+                    <div id="settings-view" class="view">
+                        <div class="header">
+                            <h1>Settings</h1>
+                        </div>
+                        
+                        <div class="p-4">
+                            <div class="settings-section">
+                                <div class="settings-header">Company Information</div>
+                                <div class="settings-item">
+                                    <span class="settings-label">Company Name</span>
+                                    <span class="settings-value" id="settingsCompanyName">Loading...</span>
+                                </div>
+                                <div class="settings-item">
+                                    <span class="settings-label">Company Code</span>
+                                    <span class="settings-value" id="settingsCompanyCode">Loading...</span>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-section" id="adminSettings" style="display: none;">
+                                <div class="settings-header">Inventory Settings</div>
+                                <div class="settings-item">
+                                    <span class="settings-label">Default Low Stock Threshold</span>
+                                    <span class="settings-value" id="settingsThreshold">5</span>
+                                </div>
+                                <button class="settings-item" onclick="showLowStockSettings()" style="border: none; background: none; width: 100%; text-align: left; cursor: pointer;">
+                                    <span class="settings-label" style="color: var(--primary-color);">Configure Low Stock Alerts</span>
+                                </button>
+                            </div>
+                            
+                            <div class="settings-section">
+                                <div class="settings-header">Account</div>
+                                <div class="settings-item">
+                                    <span class="settings-label">Name</span>
+                                    <span class="settings-value" id="settingsUserName">Loading...</span>
+                                </div>
+                                <div class="settings-item">
+                                    <span class="settings-label">Email</span>
+                                    <span class="settings-value" id="settingsUserEmail">Loading...</span>
+                                </div>
+                                <div class="settings-item">
+                                    <span class="settings-label">Role</span>
+                                    <span class="settings-value" id="settingsUserRole">Loading...</span>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-section">
+                                <button class="settings-item settings-danger" onclick="showLogoutConfirm()" style="border: none; background: none; width: 100%; cursor: pointer;">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                    Sign Out
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile Bottom Navigation -->
+                <nav class="bottom-nav">
+                    <a href="#" class="nav-item active" data-view="items">
                         <i class="fas fa-list"></i>
                         Items
                     </a>
-                    <a href="#" class="sidebar-item" data-view="operations">
+                    <a href="#" class="nav-item" data-view="operations">
                         <i class="fas fa-boxes"></i>
                         Operations
                     </a>
-                    <a href="#" class="sidebar-item" data-view="activity">
+                    <a href="#" class="nav-item" data-view="activity">
                         <i class="fas fa-clock"></i>
                         Activity
                     </a>
-                    <a href="#" class="sidebar-item" data-view="team" id="teamNavItem">
+                    <a href="#" class="nav-item" data-view="team" id="teamNavItemMobile">
                         <i class="fas fa-users"></i>
                         Team
                     </a>
-                    <a href="#" class="sidebar-item" data-view="settings">
+                    <a href="#" class="nav-item" data-view="settings">
                         <i class="fas fa-cog"></i>
                         Settings
                     </a>
                 </nav>
             </div>
+        </div>
 
-            <!-- Content Area -->
-            <div class="content">
-                <!-- Items View -->
-                <div id="items-view" class="view active">
-                    <div class="header">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h1>All Items</h1>
-                                <p id="itemsStats">Loading...</p>
-                            </div>
-                            <div class="header-actions">
-                                <button class="header-btn" onclick="showBarcodeSearch()">
-                                    <i class="fas fa-search"></i>
-                                </button>
-                                <button class="header-btn" onclick="simulateBarcodeScan()">
-                                    <i class="fas fa-camera"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="search-section">
-                        <div class="search-box">
-                            <i class="fas fa-search"></i>
-                            <input type="text" class="search-input" id="itemSearch" placeholder="Search items by name or barcode...">
-                        </div>
-                        
-                        <div class="filter-tabs">
-                            <button class="filter-tab active" data-filter="all">All Items</button>
-                            <button class="filter-tab" data-filter="low">Low Stock</button>
-                            <button class="filter-tab" data-filter="out">Out of Stock</button>
-                        </div>
-                    </div>
-                    
-                    <div id="itemsList" class="items-list">
-                        <div class="loading">
-                            <div class="spinner"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Operations View -->
-                <div id="operations-view" class="view">
-                    <div class="batch-header">
-                        <h1>Inventory Operations</h1>
-                        <div class="form-group">
-                            <div class="form-label">
-                                <i class="fas fa-file-text"></i>
-                                Operation Title
-                            </div>
-                            <input type="text" class="batch-title-input" id="sessionTitle" placeholder="e.g., Weekly restocking, Damaged goods removal">
-                        </div>
-                    </div>
-                    
-                    <div class="batch-actions">
-                        <button class="btn batch-btn-scan" onclick="simulateBarcodeScan()">
-                            <i class="fas fa-camera"></i>
-                            Scan Item
-                        </button>
-                        <button class="btn batch-btn-browse" onclick="showItemPicker()">
-                            <i class="fas fa-list"></i>
-                            Browse Items
-                        </button>
-                        <button class="btn batch-btn-create" onclick="showAddItem()">
-                            <i class="fas fa-plus-circle"></i>
-                            Create New Item
-                        </button>
-                    </div>
-                    
-                    <div id="batchItems" class="batch-items">
-                        <div class="empty-state">
-                            <i class="fas fa-inbox"></i>
-                            <h3>No items selected</h3>
-                            <p>Scan or browse items to add them to this operation</p>
-                        </div>
-                    </div>
-                    
-                    <div class="p-4">
-                        <button class="btn btn-primary" id="processBatch" style="display: none;" onclick="processBatchOperation()">
-                            <i class="fas fa-check"></i>
-                            Process Operation
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Activity View -->
-                <div id="activity-view" class="view">
-                    <div class="header">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h1>Activity Log</h1>
-                                <p id="activityStats">Real-time inventory activity tracking</p>
-                            </div>
-                            <div class="header-actions">
-                                <button class="header-btn" onclick="refreshActivities()">
-                                    <i class="fas fa-sync-alt"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div id="activityList">
-                        <div class="loading">
-                            <div class="spinner"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Team View -->
-                <div id="team-view" class="view">
-                    <div class="header">
-                        <div class="flex items-center justify-between">
-                            <h1>Team Management</h1>
-                            <button class="header-btn" onclick="showInviteGenerator()">
-                                <i class="fas fa-link"></i>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div id="teamList" class="p-4">
-                        <div class="loading">
-                            <div class="spinner"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Settings View -->
-                <div id="settings-view" class="view">
-                    <div class="header">
-                        <h1>Settings</h1>
-                    </div>
-                    
-                    <div class="p-4">
-                        <div class="settings-section">
-                            <div class="settings-header">Company Information</div>
-                            <div class="settings-item">
-                                <span class="settings-label">Company Name</span>
-                                <span class="settings-value" id="settingsCompanyName">Loading...</span>
-                            </div>
-                            <div class="settings-item">
-                                <span class="settings-label">Company Code</span>
-                                <span class="settings-value" id="settingsCompanyCode">Loading...</span>
-                            </div>
-                        </div>
-                        
-                        <div class="settings-section" id="adminSettings" style="display: none;">
-                            <div class="settings-header">Inventory Settings</div>
-                            <div class="settings-item">
-                                <span class="settings-label">Default Low Stock Threshold</span>
-                                <span class="settings-value" id="settingsThreshold">5</span>
-                            </div>
-                            <button class="settings-item" onclick="showLowStockSettings()" style="border: none; background: none; width: 100%; text-align: left; cursor: pointer;">
-                                <span class="settings-label" style="color: var(--primary-color);">Configure Low Stock Alerts</span>
-                            </button>
-                        </div>
-                        
-                        <div class="settings-section">
-                            <div class="settings-header">Account</div>
-                            <div class="settings-item">
-                                <span class="settings-label">Name</span>
-                                <span class="settings-value" id="settingsUserName">Loading...</span>
-                            </div>
-                            <div class="settings-item">
-                                <span class="settings-label">Email</span>
-                                <span class="settings-value" id="settingsUserEmail">Loading...</span>
-                            </div>
-                            <div class="settings-item">
-                                <span class="settings-label">Role</span>
-                                <span class="settings-value" id="settingsUserRole">Loading...</span>
-                            </div>
-                        </div>
-                        
-                        <div class="settings-section">
-                            <button class="settings-item settings-danger" onclick="showLogoutConfirm()" style="border: none; background: none; width: 100%; cursor: pointer;">
-                                <i class="fas fa-sign-out-alt"></i>
-                                Sign Out
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Mobile Bottom Navigation -->
-            <nav class="bottom-nav">
-                <a href="#" class="nav-item active" data-view="items">
-                    <i class="fas fa-list"></i>
-                    Items
-                </a>
-                <a href="#" class="nav-item" data-view="operations">
-                    <i class="fas fa-boxes"></i>
-                    Operations
-                </a>
-                <a href="#" class="nav-item" data-view="activity">
-                    <i class="fas fa-clock"></i>
-                    Activity
-                </a>
-                <a href="#" class="nav-item" data-view="team" id="teamNavItemMobile">
-                    <i class="fas fa-users"></i>
-                    Team
-                </a>
-                <a href="#" class="nav-item" data-view="settings">
-                    <i class="fas fa-cog"></i>
-                    Settings
-                </a>
-            </nav>
+        <!-- Invite Application -->
+        <div id="invite-app" class="invite-app">
+            <!-- React will render the invite system here -->
         </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Modals (keeping all your existing modals) -->
     <!-- Item Detail Modal -->
     <div id="itemDetailModal" class="modal">
         <div class="modal-content">
@@ -1524,6 +1665,344 @@
         </div>
     </div>
 
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Configuration
+        const API_BASE_URL = "https://shimmering-perfection-production.up.railway.app";
+
+        // Router component to handle different views
+        function AppRouter() {
+            const [currentView, setCurrentView] = useState('main');
+            const [inviteToken, setInviteToken] = useState(null);
+
+            useEffect(() => {
+                // Check URL for invite token
+                const path = window.location.pathname;
+                const urlParams = new URLSearchParams(window.location.search);
+                
+                console.log('Current path:', path);
+                console.log('URL params:', urlParams.toString());
+
+                // Handle different invite URL patterns
+                if (path.includes('/invite/')) {
+                    // Extract token from path like /invite/abc123
+                    const token = path.split('/invite/')[1];
+                    if (token) {
+                        setInviteToken(token);
+                        setCurrentView('invite');
+                        document.getElementById('main-app').classList.remove('active');
+                        document.getElementById('invite-app').classList.add('active');
+                    }
+                } else if (urlParams.get('token')) {
+                    // Handle token as query parameter like ?token=abc123
+                    const token = urlParams.get('token');
+                    setInviteToken(token);
+                    setCurrentView('invite');
+                    document.getElementById('main-app').classList.remove('active');
+                    document.getElementById('invite-app').classList.add('active');
+                } else if (urlParams.get('invite')) {
+                    // Handle invite parameter like ?invite=abc123
+                    const token = urlParams.get('invite');
+                    setInviteToken(token);
+                    setCurrentView('invite');
+                    document.getElementById('main-app').classList.remove('active');
+                    document.getElementById('invite-app').classList.add('active');
+                }
+
+                // Handle back button
+                window.addEventListener('popstate', handlePopState);
+                return () => window.removeEventListener('popstate', handlePopState);
+            }, []);
+
+            const handlePopState = () => {
+                if (window.location.pathname === '/' || window.location.pathname === '/index.html' || window.location.pathname.endsWith('inventorypro-website/')) {
+                    setCurrentView('main');
+                    setInviteToken(null);
+                    document.getElementById('main-app').classList.add('active');
+                    document.getElementById('invite-app').classList.remove('active');
+                }
+            };
+
+            const navigateToMain = () => {
+                setCurrentView('main');
+                setInviteToken(null);
+                window.history.pushState({}, '', '/inventorypro-website/');
+                document.getElementById('main-app').classList.add('active');
+                document.getElementById('invite-app').classList.remove('active');
+            };
+
+            if (currentView === 'invite' && inviteToken) {
+                return React.createElement(InviteAcceptancePage, { 
+                    token: inviteToken, 
+                    onComplete: navigateToMain 
+                });
+            }
+
+            return null; // Main app is already shown via HTML
+        }
+
+        // Invite Acceptance Component
+        function InviteAcceptancePage({ token, onComplete }) {
+            const [inviteData, setInviteData] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState('');
+            const [formData, setFormData] = useState({
+                name: '',
+                email: '',
+                password: ''
+            });
+            const [isSubmitting, setIsSubmitting] = useState(false);
+            const [success, setSuccess] = useState(false);
+
+            useEffect(() => {
+                console.log('Validating invite token:', token);
+                validateInvite(token);
+            }, [token]);
+
+            const validateInvite = async (inviteToken) => {
+                try {
+                    console.log('Making API call to validate invite...');
+                    const response = await fetch(`${API_BASE_URL}/api/users/validate-invite/${inviteToken}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    console.log('Invite validation response:', data);
+                    setInviteData({ ...data, token: inviteToken });
+                } catch (err) {
+                    console.error('Invite validation error:', err);
+                    setError(`Unable to validate invitation: ${err.message}`);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                
+                if (!formData.name || !formData.email || !formData.password) {
+                    setError('Please fill in all fields');
+                    return;
+                }
+
+                if (formData.password.length < 6) {
+                    setError('Password must be at least 6 characters');
+                    return;
+                }
+
+                setIsSubmitting(true);
+                setError('');
+
+                try {
+                    console.log('Accepting invite...');
+                    const response = await fetch(`${API_BASE_URL}/api/users/accept-invite`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            token: inviteData.token,
+                            name: formData.name,
+                            email: formData.email,
+                            password: formData.password
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to accept invitation');
+                    }
+
+                    const data = await response.json();
+                    console.log('Invite accepted successfully:', data);
+
+                    // Store auth data
+                    localStorage.setItem('authToken', data.authToken);
+                    localStorage.setItem('currentUser', JSON.stringify(data.user));
+                    localStorage.setItem('currentCompany', JSON.stringify(data.company));
+                    
+                    setSuccess(true);
+                    
+                    // Redirect to main app after 2 seconds
+                    setTimeout(() => {
+                        onComplete();
+                        // Reload the page to initialize the main app with new auth
+                        window.location.reload();
+                    }, 2000);
+
+                } catch (err) {
+                    console.error('Accept invite error:', err);
+                    setError(err.message);
+                } finally {
+                    setIsSubmitting(false);
+                }
+            };
+
+            const handleInputChange = (field) => (e) => {
+                setFormData(prev => ({
+                    ...prev,
+                    [field]: e.target.value
+                }));
+            };
+
+            if (loading) {
+                return (
+                    <div className="invite-container">
+                        <div className="invite-card">
+                            <div className="invite-header">
+                                <div className="loading-spinner" style={{margin: '0 auto 20px'}}></div>
+                                <p style={{color: 'var(--gray-600)'}}>Validating invitation...</p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (error && !inviteData) {
+                return (
+                    <div className="invite-container">
+                        <div className="invite-card">
+                            <div className="invite-header">
+                                <div className="status-icon error">
+                                    <i className="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <h2 className="invite-title">Invalid Invitation</h2>
+                                <p style={{color: 'var(--gray-600)', marginBottom: '20px'}}>{error}</p>
+                                <button className="btn btn-primary" onClick={onComplete}>
+                                    Go to Main App
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (success) {
+                return (
+                    <div className="invite-container">
+                        <div className="invite-card">
+                            <div className="invite-header">
+                                <div className="status-icon success">
+                                    <i className="fas fa-check"></i>
+                                </div>
+                                <h2 className="invite-title">Welcome to the Team!</h2>
+                                <p style={{color: 'var(--gray-600)', marginBottom: '12px'}}>Your account has been created successfully.</p>
+                                <p style={{fontSize: '14px', color: 'var(--gray-500)'}}>Redirecting to your dashboard...</p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="invite-container">
+                    <div className="invite-card">
+                        <div className="invite-header">
+                            <i className="fas fa-users invite-icon"></i>
+                            <h1 className="invite-title">Join the Team</h1>
+                            <p className="invite-subtitle">You've been invited to join</p>
+                            <h2 style={{color: 'var(--primary-color)', fontSize: '20px', fontWeight: '600'}}>
+                                {inviteData?.company_name}
+                            </h2>
+                        </div>
+
+                        <div className="invite-details">
+                            <div className="invite-detail-row">
+                                <span className="invite-detail-label">Invited by:</span>
+                                <span className="invite-detail-value">{inviteData?.inviter_name}</span>
+                            </div>
+                            <div className="invite-detail-row">
+                                <span className="invite-detail-label">Role:</span>
+                                <span className="invite-detail-value">
+                                    {inviteData?.role === 'admin' ? 'Administrator' : 'Team Member'}
+                                </span>
+                            </div>
+                            <div className="invite-detail-row">
+                                <span className="invite-detail-label">Company:</span>
+                                <span className="invite-detail-value">{inviteData?.company_name}</span>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleSubmit}>
+                            <div className="form-group">
+                                <label className="form-label">Full Name</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={formData.name}
+                                    onChange={handleInputChange('name')}
+                                    placeholder="Enter your full name"
+                                    required
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Email Address</label>
+                                <input
+                                    type="email"
+                                    className="form-input"
+                                    value={formData.email}
+                                    onChange={handleInputChange('email')}
+                                    placeholder="Enter your email"
+                                    required
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Password</label>
+                                <input
+                                    type="password"
+                                    className="form-input"
+                                    value={formData.password}
+                                    onChange={handleInputChange('password')}
+                                    placeholder="Create a password (min 6 characters)"
+                                    required
+                                />
+                            </div>
+
+                            {error && (
+                                <div className="error-message">
+                                    {error}
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                className="btn btn-primary"
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting ? (
+                                    <>
+                                        <div className="loading-spinner"></div>
+                                        Creating Account...
+                                    </>
+                                ) : (
+                                    'Join Team'
+                                )}
+                            </button>
+                        </form>
+
+                        <div style={{textAlign: 'center', marginTop: '20px'}}>
+                            <p style={{fontSize: '14px', color: 'var(--gray-500)'}}>
+                                Already have an account?{' '}
+                                <button className="btn-link" onClick={onComplete}>
+                                    Sign in instead
+                                </button>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Initialize the router
+        const root = ReactDOM.createRoot(document.getElementById('invite-app'));
+        root.render(React.createElement(AppRouter));
+    </script>
+
     <script>
         // Application State
         let appState = {
@@ -1553,7 +2032,8 @@
             
             // Check for responsive design
             if (window.innerWidth >= 768) {
-                document.querySelector('.sidebar').style.display = 'flex';
+                const sidebar = document.querySelector('.sidebar');
+                if (sidebar) sidebar.style.display = 'flex';
             }
         });
 
@@ -1603,12 +2083,12 @@
 
         function showAuthView() {
             document.getElementById('auth-view').style.display = 'flex';
-            document.getElementById('main-app').classList.remove('active');
+            document.getElementById('inventory-content').style.display = 'none';
         }
 
         function showMainApp() {
             document.getElementById('auth-view').style.display = 'none';
-            document.getElementById('main-app').classList.add('active');
+            document.getElementById('inventory-content').style.display = 'flex';
         }
 
         function showLogin() {
@@ -1718,7 +2198,7 @@
                     quantity: 15,
                     barcode: 'DEMO-001',
                     lowStockThreshold: 5,
-                    updatedAt: new Date().toISOString()
+                    updated_at: new Date().toISOString()
                 },
                 {
                     id: '2',
@@ -1726,7 +2206,7 @@
                     quantity: 3,
                     barcode: 'DEMO-002',
                     lowStockThreshold: 5,
-                    updatedAt: new Date().toISOString()
+                    updated_at: new Date().toISOString()
                 },
                 {
                     id: '3',
@@ -1734,7 +2214,7 @@
                     quantity: 0,
                     barcode: 'DEMO-003',
                     lowStockThreshold: 10,
-                    updatedAt: new Date().toISOString()
+                    updated_at: new Date().toISOString()
                 },
                 {
                     id: '4',
@@ -1742,7 +2222,7 @@
                     quantity: 25,
                     barcode: 'DEMO-004',
                     lowStockThreshold: 5,
-                    updatedAt: new Date().toISOString()
+                    updated_at: new Date().toISOString()
                 }
             ];
 
@@ -1750,21 +2230,21 @@
             appState.activities = [
                 {
                     id: '1',
-                    itemName: 'Office Chair',
+                    item_name: 'Office Chair',
                     type: 'created',
                     quantity: 15,
-                    userName: 'Demo User',
-                    createdAt: new Date().toISOString()
+                    user_name: 'Demo User',
+                    created_at: new Date().toISOString()
                 },
                 {
                     id: '2',
-                    itemName: 'Laptop Computer',
+                    item_name: 'Laptop Computer',
                     type: 'removed',
                     quantity: 2,
-                    oldQuantity: 5,
-                    userName: 'Demo User',
-                    createdAt: new Date(Date.now() - 86400000).toISOString(),
-                    sessionTitle: 'Equipment Distribution'
+                    old_quantity: 5,
+                    user_name: 'Demo User',
+                    created_at: new Date(Date.now() - 86400000).toISOString(),
+                    session_title: 'Equipment Distribution'
                 }
             ];
 
@@ -1798,7 +2278,7 @@
                 console.error('❌ Failed to load items from API:', error);
                 // Only use demo data if we're in demo mode
                 if (localStorage.getItem('authToken') === 'demo-token') {
-                    loadDemoItems();
+                    // Already handled in loadDemoData
                 }
             }
         }
@@ -1823,9 +2303,9 @@
                 // Only use demo data if we're in demo mode
                 if (localStorage.getItem('authToken') === 'demo-token') {
                     console.log('🎮 Loading demo activities...');
-                    loadDemoActivities();
+                    // Already handled in loadDemoData
                 } else {
-                    // For real API failures, show empty state but don't hide the error
+                    // For real API failures, show empty state
                     appState.activities = [];
                     console.error('🚨 Real API failed to load activities - check network/CORS/auth');
                 }
@@ -1849,7 +2329,7 @@
                     console.error('❌ Failed to load users from API:', error);
                     // Only use demo data if we're in demo mode
                     if (localStorage.getItem('authToken') === 'demo-token') {
-                        loadDemoUsers();
+                        // Already handled in loadDemoData
                     }
                 }
             }
@@ -1866,24 +2346,33 @@
             
             // Show/hide team navigation based on role
             const isAdmin = appState.currentUser?.role === 'admin';
-            document.getElementById('teamNavItem').style.display = isAdmin ? 'block' : 'none';
-            document.getElementById('teamNavItemMobile').style.display = isAdmin ? 'flex' : 'none';
-            document.getElementById('adminSettings').style.display = isAdmin ? 'block' : 'none';
+            const teamNavItem = document.getElementById('teamNavItem');
+            const teamNavItemMobile = document.getElementById('teamNavItemMobile');
+            const adminSettings = document.getElementById('adminSettings');
+            
+            if (teamNavItem) teamNavItem.style.display = isAdmin ? 'block' : 'none';
+            if (teamNavItemMobile) teamNavItemMobile.style.display = isAdmin ? 'flex' : 'none';
+            if (adminSettings) adminSettings.style.display = isAdmin ? 'block' : 'none';
         }
 
         function updateStats() {
             const totalItems = appState.items.length;
             const totalUnits = appState.items.reduce((sum, item) => sum + item.quantity, 0);
             
-            if (totalItems === 0) {
-                document.getElementById('itemsStats').textContent = 'No items in your inventory';
-            } else {
-                document.getElementById('itemsStats').textContent = `${totalItems} items · ${totalUnits} total units`;
+            const statsElement = document.getElementById('itemsStats');
+            if (statsElement) {
+                if (totalItems === 0) {
+                    statsElement.textContent = 'No items in your inventory';
+                } else {
+                    statsElement.textContent = `${totalItems} items · ${totalUnits} total units`;
+                }
             }
         }
 
         function updateItemsList() {
             const container = document.getElementById('itemsList');
+            if (!container) return;
+            
             const filteredItems = getFilteredItems();
             
             if (filteredItems.length === 0) {
@@ -1920,6 +2409,7 @@
 
         function updateActivityList() {
             const container = document.getElementById('activityList');
+            if (!container) return;
             
             console.log('🔄 Updating activity list. Activities count:', appState.activities.length);
             
@@ -1959,12 +2449,15 @@
         // Add refresh function
         async function refreshActivities() {
             console.log('🔄 Manually refreshing activities...');
-            document.getElementById('activityList').innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p style="margin-top: 10px;">Refreshing activities...</p>
-                </div>
-            `;
+            const container = document.getElementById('activityList');
+            if (container) {
+                container.innerHTML = `
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p style="margin-top: 10px;">Refreshing activities...</p>
+                    </div>
+                `;
+            }
             
             await loadActivities();
             updateActivityList();
@@ -1972,6 +2465,7 @@
 
         function updateTeamList() {
             const container = document.getElementById('teamList');
+            if (!container) return;
             
             if (appState.users.length === 0) {
                 container.innerHTML = `
@@ -2003,21 +2497,31 @@
 
         function updateSettings() {
             if (appState.currentCompany) {
-                document.getElementById('settingsCompanyName').textContent = appState.currentCompany.name;
-                document.getElementById('settingsCompanyCode').textContent = appState.currentCompany.code;
-                document.getElementById('settingsThreshold').textContent = appState.currentCompany.lowStockThreshold || 5;
+                const companyName = document.getElementById('settingsCompanyName');
+                const companyCode = document.getElementById('settingsCompanyCode');
+                const threshold = document.getElementById('settingsThreshold');
+                
+                if (companyName) companyName.textContent = appState.currentCompany.name;
+                if (companyCode) companyCode.textContent = appState.currentCompany.code;
+                if (threshold) threshold.textContent = appState.currentCompany.lowStockThreshold || 5;
             }
             
             if (appState.currentUser) {
-                document.getElementById('settingsUserName').textContent = appState.currentUser.name;
-                document.getElementById('settingsUserEmail').textContent = appState.currentUser.email;
-                document.getElementById('settingsUserRole').textContent = appState.currentUser.role === 'admin' ? 'Administrator' : 'User';
+                const userName = document.getElementById('settingsUserName');
+                const userEmail = document.getElementById('settingsUserEmail');
+                const userRole = document.getElementById('settingsUserRole');
+                
+                if (userName) userName.textContent = appState.currentUser.name;
+                if (userEmail) userEmail.textContent = appState.currentUser.email;
+                if (userRole) userRole.textContent = appState.currentUser.role === 'admin' ? 'Administrator' : 'User';
             }
         }
 
         function updateBatchItems() {
             const container = document.getElementById('batchItems');
             const processBtn = document.getElementById('processBatch');
+            
+            if (!container) return;
             
             if (appState.batchItems.length === 0) {
                 container.innerHTML = `
@@ -2027,7 +2531,7 @@
                         <p>Scan or browse items to add them to this operation</p>
                     </div>
                 `;
-                processBtn.style.display = 'none';
+                if (processBtn) processBtn.style.display = 'none';
                 return;
             }
             
@@ -2054,8 +2558,10 @@
                 </div>
             `).join('');
             
-            processBtn.style.display = 'block';
-            processBtn.innerHTML = `<i class="fas fa-check"></i> Process Operation (${appState.batchItems.length} items)`;
+            if (processBtn) {
+                processBtn.style.display = 'block';
+                processBtn.innerHTML = `<i class="fas fa-check"></i> Process Operation (${appState.batchItems.length} items)`;
+            }
         }
 
         // Helper Functions
@@ -2063,7 +2569,8 @@
             let filtered = appState.items;
             
             // Apply search filter
-            const searchTerm = document.getElementById('itemSearch')?.value.toLowerCase() || '';
+            const searchElement = document.getElementById('itemSearch');
+            const searchTerm = searchElement ? searchElement.value.toLowerCase() : '';
             if (searchTerm) {
                 filtered = filtered.filter(item => 
                     item.name.toLowerCase().includes(searchTerm) || 
@@ -2160,51 +2667,74 @@
             });
 
             // Search
-            document.getElementById('itemSearch')?.addEventListener('input', () => {
-                updateItemsList();
-            });
+            const itemSearch = document.getElementById('itemSearch');
+            if (itemSearch) {
+                itemSearch.addEventListener('input', () => {
+                    updateItemsList();
+                });
+            }
 
             // Forms
-            document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const email = document.getElementById('loginEmail').value;
-                const password = document.getElementById('loginPassword').value;
-                const errorDiv = document.getElementById('loginError');
-                
-                try {
-                    await login(email, password);
-                } catch (error) {
-                    errorDiv.textContent = error.message;
-                    errorDiv.style.display = 'block';
-                }
-            });
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) {
+                loginForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const email = document.getElementById('loginEmail').value;
+                    const password = document.getElementById('loginPassword').value;
+                    const errorDiv = document.getElementById('loginError');
+                    
+                    try {
+                        await login(email, password);
+                    } catch (error) {
+                        if (errorDiv) {
+                            errorDiv.textContent = error.message;
+                            errorDiv.style.display = 'block';
+                        }
+                    }
+                });
+            }
 
-            document.getElementById('addItemForm')?.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const name = document.getElementById('newItemName').value;
-                const quantity = parseInt(document.getElementById('newItemQuantity').value);
-                
-                await createItem(name, quantity);
-                closeModal('addItemModal');
-                document.getElementById('addItemForm').reset();
-            });
+            const addItemForm = document.getElementById('addItemForm');
+            if (addItemForm) {
+                addItemForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const name = document.getElementById('newItemName').value;
+                    const quantity = parseInt(document.getElementById('newItemQuantity').value);
+                    
+                    await createItem(name, quantity);
+                    closeModal('addItemModal');
+                    addItemForm.reset();
+                });
+            }
 
             // Picker search
-            document.getElementById('pickerSearch')?.addEventListener('input', (e) => {
-                updateItemPicker(e.target.value);
-            });
+            const pickerSearch = document.getElementById('pickerSearch');
+            if (pickerSearch) {
+                pickerSearch.addEventListener('input', (e) => {
+                    updateItemPicker(e.target.value);
+                });
+            }
 
             // Threshold slider
-            document.getElementById('thresholdSlider')?.addEventListener('input', (e) => {
-                document.getElementById('thresholdValue').textContent = e.target.value;
-            });
+            const thresholdSlider = document.getElementById('thresholdSlider');
+            if (thresholdSlider) {
+                thresholdSlider.addEventListener('input', (e) => {
+                    const thresholdValue = document.getElementById('thresholdValue');
+                    if (thresholdValue) {
+                        thresholdValue.textContent = e.target.value;
+                    }
+                });
+            }
 
             // Window resize
             window.addEventListener('resize', () => {
-                if (window.innerWidth >= 768) {
-                    document.querySelector('.sidebar').style.display = 'flex';
-                } else {
-                    document.querySelector('.sidebar').style.display = 'none';
+                const sidebar = document.querySelector('.sidebar');
+                if (sidebar) {
+                    if (window.innerWidth >= 768) {
+                        sidebar.style.display = 'flex';
+                    } else {
+                        sidebar.style.display = 'none';
+                    }
                 }
             });
         }
@@ -2217,18 +2747,23 @@
             document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
             document.querySelectorAll('.nav-item, .sidebar-item').forEach(item => item.classList.remove('active'));
             
-            document.getElementById(`${viewName}-view`).classList.add('active');
+            const targetView = document.getElementById(`${viewName}-view`);
+            if (targetView) targetView.classList.add('active');
+            
             document.querySelectorAll(`[data-view="${viewName}"]`).forEach(item => item.classList.add('active'));
             
             // Refresh data when switching to activity view
             if (viewName === 'activity') {
                 console.log('🔄 Switched to activity view - refreshing data...');
-                document.getElementById('activityList').innerHTML = `
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        <p style="margin-top: 10px;">Loading activities...</p>
-                    </div>
-                `;
+                const activityList = document.getElementById('activityList');
+                if (activityList) {
+                    activityList.innerHTML = `
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p style="margin-top: 10px;">Loading activities...</p>
+                        </div>
+                    `;
+                }
                 await loadActivities();
                 updateActivityList();
             }
@@ -2242,11 +2777,13 @@
 
         // Modal Management
         function showModal(modalId) {
-            document.getElementById(modalId).classList.add('active');
+            const modal = document.getElementById(modalId);
+            if (modal) modal.classList.add('active');
         }
 
         function closeModal(modalId) {
-            document.getElementById(modalId).classList.remove('active');
+            const modal = document.getElementById(modalId);
+            if (modal) modal.classList.remove('active');
         }
 
         // Item Management
@@ -2256,14 +2793,23 @@
             
             appState.selectedItem = item;
             
-            document.getElementById('itemDetailName').textContent = item.name;
-            document.getElementById('itemDetailTitle').textContent = item.name;
-            document.getElementById('itemDetailStock').textContent = `Current Stock: ${item.quantity}`;
-            document.getElementById('itemDetailBarcode').textContent = item.barcode;
+            const elements = {
+                itemDetailName: document.getElementById('itemDetailName'),
+                itemDetailTitle: document.getElementById('itemDetailTitle'),
+                itemDetailStock: document.getElementById('itemDetailStock'),
+                itemDetailBarcode: document.getElementById('itemDetailBarcode'),
+                itemDetailStatus: document.getElementById('itemDetailStatus')
+            };
             
-            const statusElement = document.getElementById('itemDetailStatus');
-            statusElement.textContent = getStockStatus(item);
-            statusElement.className = `stock-status ${getStockClass(item)}`;
+            if (elements.itemDetailName) elements.itemDetailName.textContent = item.name;
+            if (elements.itemDetailTitle) elements.itemDetailTitle.textContent = item.name;
+            if (elements.itemDetailStock) elements.itemDetailStock.textContent = `Current Stock: ${item.quantity}`;
+            if (elements.itemDetailBarcode) elements.itemDetailBarcode.textContent = item.barcode;
+            
+            if (elements.itemDetailStatus) {
+                elements.itemDetailStatus.textContent = getStockStatus(item);
+                elements.itemDetailStatus.className = `stock-status ${getStockClass(item)}`;
+            }
             
             showModal('itemDetailModal');
         }
@@ -2336,22 +2882,31 @@
         // Adjustment Functions
         function setAdjustAction(action) {
             appState.adjustAction = action;
-            document.querySelectorAll('#adjustRemove, #adjustAdd').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`adjust${action.charAt(0).toUpperCase() + action.slice(1)}`).classList.add('active');
+            const adjustRemove = document.getElementById('adjustRemove');
+            const adjustAdd = document.getElementById('adjustAdd');
+            
+            if (adjustRemove) adjustRemove.classList.remove('active');
+            if (adjustAdd) adjustAdd.classList.remove('active');
+            
+            const activeBtn = document.getElementById(`adjust${action.charAt(0).toUpperCase() + action.slice(1)}`);
+            if (activeBtn) activeBtn.classList.add('active');
             
             const performBtn = document.getElementById('performAdjust');
-            if (action === 'add') {
-                performBtn.innerHTML = '<i class="fas fa-plus"></i> Add Items';
-                performBtn.style.background = 'var(--success-color)';
-            } else {
-                performBtn.innerHTML = '<i class="fas fa-minus"></i> Remove Items';
-                performBtn.style.background = 'var(--danger-color)';
+            if (performBtn) {
+                if (action === 'add') {
+                    performBtn.innerHTML = '<i class="fas fa-plus"></i> Add Items';
+                    performBtn.style.background = 'var(--success-color)';
+                } else {
+                    performBtn.innerHTML = '<i class="fas fa-minus"></i> Remove Items';
+                    performBtn.style.background = 'var(--danger-color)';
+                }
             }
         }
 
         function changeAdjustQuantity(delta) {
             appState.adjustQuantity = Math.max(1, appState.adjustQuantity + delta);
-            document.getElementById('adjustQuantity').textContent = appState.adjustQuantity;
+            const adjustQuantity = document.getElementById('adjustQuantity');
+            if (adjustQuantity) adjustQuantity.textContent = appState.adjustQuantity;
         }
 
         async function performAdjustment() {
@@ -2488,6 +3043,8 @@
 
         function updateItemPicker(searchTerm = '') {
             const container = document.getElementById('pickerItemsList');
+            if (!container) return;
+            
             let filtered = appState.items;
             
             if (searchTerm) {
@@ -2545,7 +3102,9 @@
         }
 
         async function processBatchOperation() {
-            const sessionTitle = document.getElementById('sessionTitle').value;
+            const sessionTitleElement = document.getElementById('sessionTitle');
+            const sessionTitle = sessionTitleElement ? sessionTitleElement.value : '';
+            
             if (!sessionTitle || appState.batchItems.length === 0) return;
             
             const token = localStorage.getItem('authToken');
@@ -2577,7 +3136,7 @@
                 
                 // Reset batch
                 appState.batchItems = [];
-                document.getElementById('sessionTitle').value = '';
+                if (sessionTitleElement) sessionTitleElement.value = '';
                 
                 updateUI();
                 alert('Operation processed successfully!');
@@ -2610,7 +3169,7 @@
                     
                     // Reset batch
                     appState.batchItems = [];
-                    document.getElementById('sessionTitle').value = '';
+                    if (sessionTitleElement) sessionTitleElement.value = '';
                     
                     // Reload data to get updated lists including activities
                     await Promise.all([
@@ -2631,7 +3190,8 @@
         }
 
         function searchByBarcode() {
-            const barcode = document.getElementById('manualBarcode').value.trim();
+            const barcodeElement = document.getElementById('manualBarcode');
+            const barcode = barcodeElement ? barcodeElement.value.trim() : '';
             if (!barcode) return;
             
             const item = appState.items.find(i => i.barcode === barcode);
@@ -2660,19 +3220,32 @@
 
         function selectRole(role) {
             appState.inviteRole = role;
-            document.querySelectorAll('#roleUser, #roleAdmin').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`role${role.charAt(0).toUpperCase() + role.slice(1)}`).classList.add('active');
+            const roleUser = document.getElementById('roleUser');
+            const roleAdmin = document.getElementById('roleAdmin');
+            
+            if (roleUser) roleUser.classList.remove('active');
+            if (roleAdmin) roleAdmin.classList.remove('active');
+            
+            const activeBtn = document.getElementById(`role${role.charAt(0).toUpperCase() + role.slice(1)}`);
+            if (activeBtn) activeBtn.classList.add('active');
         }
 
         function generateInviteLink() {
-            const link = `https://your-app.com/invite/${Date.now()}?role=${appState.inviteRole}`;
-            document.getElementById('generatedLink').textContent = link;
-            document.getElementById('inviteGenerated').style.display = 'block';
-            document.getElementById('generateInvite').style.display = 'none';
+            // Update this to use the correct URL for your deployed site
+            const link = `https://gavin-morris-04.github.io/inventorypro-website/invite/${Date.now()}?role=${appState.inviteRole}`;
+            const generatedLink = document.getElementById('generatedLink');
+            const inviteGenerated = document.getElementById('inviteGenerated');
+            const generateInvite = document.getElementById('generateInvite');
+            
+            if (generatedLink) generatedLink.textContent = link;
+            if (inviteGenerated) inviteGenerated.style.display = 'block';
+            if (generateInvite) generateInvite.style.display = 'none';
         }
 
         function copyInviteLink() {
-            const link = document.getElementById('generatedLink').textContent;
+            const generatedLink = document.getElementById('generatedLink');
+            const link = generatedLink ? generatedLink.textContent : '';
+            
             navigator.clipboard.writeText(link).then(() => {
                 alert('Link copied to clipboard!');
             });
@@ -2681,13 +3254,19 @@
         // Settings
         function showLowStockSettings() {
             const currentThreshold = appState.currentCompany?.lowStockThreshold || 5;
-            document.getElementById('thresholdSlider').value = currentThreshold;
-            document.getElementById('thresholdValue').textContent = currentThreshold;
+            const thresholdSlider = document.getElementById('thresholdSlider');
+            const thresholdValue = document.getElementById('thresholdValue');
+            
+            if (thresholdSlider) thresholdSlider.value = currentThreshold;
+            if (thresholdValue) thresholdValue.textContent = currentThreshold;
+            
             showModal('lowStockModal');
         }
 
         function saveThresholdSetting() {
-            const newThreshold = parseInt(document.getElementById('thresholdSlider').value);
+            const thresholdSlider = document.getElementById('thresholdSlider');
+            const newThreshold = thresholdSlider ? parseInt(thresholdSlider.value) : 5;
+            
             if (appState.currentCompany) {
                 appState.currentCompany.lowStockThreshold = newThreshold;
                 localStorage.setItem('currentCompany', JSON.stringify(appState.currentCompany));
@@ -2728,6 +3307,23 @@
                 .then(data => console.log('- API Health:', data))
                 .catch(e => console.log('- API Health: ERROR', e.message));
         };
+
+        // Test invite routing function
+        window.testInvite = function(token) {
+            console.log('Testing invite with token:', token);
+            window.history.pushState({}, '', `/inventorypro-website/invite/${token}`);
+            window.location.reload();
+        };
+
+        // Handle link clicks for navigation
+        document.addEventListener('click', function(e) {
+            if (e.target.matches('a[href^="/invite/"]')) {
+                e.preventDefault();
+                const href = e.target.getAttribute('href');
+                window.history.pushState({}, '', href);
+                window.location.reload();
+            }
+        });
     </script>
 </body>
 </html>

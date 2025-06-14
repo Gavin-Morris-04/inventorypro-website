@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Pro - Redirecting...</title>
+    <script>
+        // GitHub Pages SPA routing fix
+        // Store the current path and redirect to index.html with the path as a parameter
+        const path = window.location.pathname;
+        const query = window.location.search;
+        const hash = window.location.hash;
+        
+        console.log('404 redirect - original path:', path, 'query:', query, 'hash:', hash);
+        
+        // If this is an invite link, preserve the full path
+        if (path.includes('/invite/')) {
+            // Extract the token from the path
+            const token = path.split('/invite/')[1];
+            if (token) {
+                console.log('Redirecting invite token:', token);
+                // Redirect to index.html with the token as a query parameter
+                window.location.replace(`/inventorypro-website/?token=${token}${hash}`);
+            } else {
+                console.log('Invalid invite path, redirecting to home');
+                window.location.replace('/inventorypro-website/' + hash);
+            }
+        } else {
+            console.log('Redirecting to home');
+            // For other paths, just redirect to the main app
+            window.location.replace('/inventorypro-website/' + query + hash);
+        }
+    </script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .loading {
+            text-align: center;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading">
+        <div class="spinner"></div>
+        <h2>Redirecting...</h2>
+        <p>Taking you to Inventory Pro</p>
+    </div>
+</body>
+</html>
