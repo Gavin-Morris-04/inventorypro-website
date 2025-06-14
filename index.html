@@ -656,7 +656,7 @@
             background: var(--success-color);
         }
 
-        .batch-btn-scan {
+        .batch-btn-find {
             background: var(--primary-color);
         }
 
@@ -1248,8 +1248,8 @@
                                     <button class="header-btn" onclick="showBarcodeSearch()">
                                         <i class="fas fa-search"></i>
                                     </button>
-                                    <button class="header-btn" onclick="simulateBarcodeScan()">
-                                        <i class="fas fa-camera"></i>
+                                    <button class="header-btn" onclick="showAddItem()">
+                                        <i class="fas fa-plus"></i>
                                     </button>
                                 </div>
                             </div>
@@ -1289,9 +1289,9 @@
                         </div>
                         
                         <div class="batch-actions">
-                            <button class="btn batch-btn-scan" onclick="simulateBarcodeScan()">
-                                <i class="fas fa-camera"></i>
-                                Scan Item
+                            <button class="btn batch-btn-find" onclick="showBarcodeSearch()">
+                                <i class="fas fa-search"></i>
+                                Find Item
                             </button>
                             <button class="btn batch-btn-browse" onclick="showItemPicker()">
                                 <i class="fas fa-list"></i>
@@ -1307,7 +1307,7 @@
                             <div class="empty-state">
                                 <i class="fas fa-inbox"></i>
                                 <h3>No items selected</h3>
-                                <p>Scan or browse items to add them to this operation</p>
+                                <p>Find or browse items to add them to this operation</p>
                             </div>
                         </div>
                         
@@ -1448,7 +1448,7 @@
         </div>
     </div>
 
-    <!-- Modals (keeping all your existing modals) -->
+    <!-- Modals -->
     <!-- Item Detail Modal -->
     <div id="itemDetailModal" class="modal">
         <div class="modal-content">
@@ -1565,7 +1565,7 @@
     <div id="barcodeSearchModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">Enter Barcode Manually</h2>
+                <h2 class="modal-title">Find Item by Barcode</h2>
                 <button class="modal-close" onclick="closeModal('barcodeSearchModal')">&times;</button>
             </div>
             <div class="modal-body">
@@ -1578,7 +1578,7 @@
                 </div>
                 <button class="btn btn-primary" onclick="searchByBarcode()">
                     <i class="fas fa-search"></i>
-                    Look Up
+                    Find Item
                 </button>
             </div>
         </div>
@@ -1761,8 +1761,6 @@
                 validateInvite(token);
             }, [token]);
 
-            // Replace the validateInvite function in your HTML file with this corrected version:
-
             const validateInvite = async (inviteToken) => {
                 try {
                     // Check if this is a fallback/temp token
@@ -1820,8 +1818,6 @@
                     setLoading(false);
                 }
             };
-
-            // Also replace the handleSubmit function with this corrected version:
 
             const handleSubmit = async (e) => {
                 e.preventDefault();
@@ -2641,7 +2637,7 @@
                     <div class="empty-state">
                         <i class="fas fa-inbox"></i>
                         <h3>No items selected</h3>
-                        <p>Scan or browse items to add them to this operation</p>
+                        <p>Find or browse items to add them to this operation</p>
                     </div>
                 `;
                 if (processBtn) processBtn.style.display = 'none';
@@ -3311,18 +3307,10 @@
             if (item) {
                 closeModal('barcodeSearchModal');
                 showItemDetail(item.id);
+                // Reset the input
+                if (barcodeElement) barcodeElement.value = '';
             } else {
-                alert('Item not found');
-            }
-        }
-
-        function simulateBarcodeScan() {
-            // Simulate scanning a random item
-            if (appState.items.length > 0) {
-                const randomItem = appState.items[Math.floor(Math.random() * appState.items.length)];
-                showItemDetail(randomItem.id);
-            } else {
-                alert('No items available to scan');
+                alert('Item not found with that barcode');
             }
         }
 
