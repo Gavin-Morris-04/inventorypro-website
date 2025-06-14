@@ -1754,6 +1754,7 @@
             });
             const [isSubmitting, setIsSubmitting] = useState(false);
             const [success, setSuccess] = useState(false);
+            const [acceptedInviteData, setAcceptedInviteData] = useState(null);
 
             useEffect(() => {
                 console.log('Validating invite token:', token);
@@ -1762,6 +1763,26 @@
 
             const validateInvite = async (inviteToken) => {
                 try {
+                    // Check if this is a fallback/temp token
+                    if (inviteToken.startsWith('temp-')) {
+                        console.log('Using fallback invite mode for token:', inviteToken);
+                        
+                        // Try to get role from URL parameters
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const roleFromUrl = urlParams.get('role') || 'user';
+                        
+                        // Create a fallback invite data object
+                        const fallbackData = {
+                            company_name: 'Demo Company',
+                            inviter_name: 'System Administrator', 
+                            role: roleFromUrl,
+                            token: inviteToken
+                        };
+                        setInviteData(fallbackData);
+                        setLoading(false);
+                        return;
+                    }
+
                     console.log('Making API call to validate invite...');
                     const response = await fetch(`${API_BASE_URL}/api/users/validate-invite/${inviteToken}`);
                     
@@ -1798,6 +1819,47 @@
 
                 try {
                     console.log('Accepting invite...');
+                    
+                    // Handle fallback/temp tokens differently
+                    if (inviteData.token.startsWith('temp-')) {
+                        console.log('Processing fallback invite...');
+                        
+                        // For fallback invites, we'll simulate a successful account creation
+                        const mockData = {
+                            authToken: 'demo-token',
+                            user: {
+                                id: 'fallback-user-' + Date.now(),
+                                name: formData.name || 'Demo User',
+                                email: formData.email || 'demo@example.com',
+                                role: inviteData.role || 'user'
+                            },
+                            company: {
+                                id: 'demo-company',
+                                name: inviteData.company_name || 'Demo Company',
+                                code: 'DEMO',
+                                lowStockThreshold: 5
+                            }
+                        };
+                        
+                        // Store the demo auth data
+                        localStorage.setItem('authToken', mockData.authToken);
+                        localStorage.setItem('currentUser', JSON.stringify(mockData.user));
+                        localStorage.setItem('currentCompany', JSON.stringify(mockData.company));
+                        
+                        console.log('Fallback invite accepted successfully');
+                        setAcceptedInviteData(inviteData);
+                        setSuccess(true);
+                        
+                        // Redirect to main app after 2 seconds
+                        setTimeout(() => {
+                            onComplete();
+                            window.location.reload();
+                        }, 2000);
+                        
+                        return;
+                    }
+
+                    // Normal API invite acceptance
                     const response = await fetch(`${API_BASE_URL}/api/users/accept-invite`, {
                         method: 'POST',
                         headers: {
@@ -1824,6 +1886,7 @@
                     localStorage.setItem('currentUser', JSON.stringify(data.user));
                     localStorage.setItem('currentCompany', JSON.stringify(data.company));
                     
+                    setAcceptedInviteData(inviteData);
                     setSuccess(true);
                     
                     // Redirect to main app after 2 seconds
@@ -1888,9 +1951,18 @@
                                 <div className="status-icon success">
                                     <i className="fas fa-check"></i>
                                 </div>
-                                <h2 className="invite-title">Welcome to the Team!</h2>
-                                <p style={{color: 'var(--gray-600)', marginBottom: '12px'}}>Your account has been created successfully.</p>
-                                <p style={{fontSize: '14px', color: 'var(--gray-500)'}}>Redirecting to your dashboard...</p>
+                                <h2 className="invite-title">
+                                    {inviteData?.token?.startsWith('temp-') ? 'Demo Account Created!' : 'Welcome to the Team!'}
+                                </h2>
+                                <p style={{color: 'var(--gray-600)', marginBottom: '12px'}}>
+                                    {inviteData?.token?.startsWith('temp-') 
+                                        ? 'Your demo account has been created successfully.' 
+                                        : 'Your account has been created successfully.'
+                                    }
+                                </p>
+                                <p style={{fontSize: '14px', color: 'var(--gray-500)'}}>
+                                    Redirecting to your dashboard...
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -1924,6 +1996,24 @@
                                 <span className="invite-detail-label">Company:</span>
                                 <span className="invite-detail-value">{inviteData?.company_name}</span>
                             </div>
+                            {inviteData?.token?.startsWith('temp-') && (
+                                <div style={{
+                                    marginTop: '12px',
+                                    padding: '8px',
+                                    background: 'rgba(59, 130, 246, 0.1)',
+                                    borderRadius: '6px',
+                                    border: '1px solid rgba(59, 130, 246, 0.2)'
+                                }}>
+                                    <p style={{ 
+                                        fontSize: '12px', 
+                                        color: 'var(--info-color)', 
+                                        margin: 0,
+                                        fontWeight: '500'
+                                    }}>
+                                        💡 Demo Invite: This will create a demo account for testing purposes.
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         <form onSubmit={handleSubmit}>
@@ -3232,7 +3322,8 @@
 
         function generateInviteLink() {
             // Update this to use the correct URL for your deployed site
-            const link = `https://gavin-morris-04.github.io/inventorypro-website/invite/${Date.now()}?role=${appState.inviteRole}`;
+            const token = `temp-${Date.now().toString().slice(-8)}`;
+            const link = `https://gavin-morris-04.github.io/inventorypro-website/invite/${token}?role=${appState.inviteRole}`;
             const generatedLink = document.getElementById('generatedLink');
             const inviteGenerated = document.getElementById('inviteGenerated');
             const generateInvite = document.getElementById('generateInvite');
