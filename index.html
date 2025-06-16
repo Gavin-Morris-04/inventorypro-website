@@ -1679,7 +1679,25 @@
             useEffect(() => {
                 console.log('🔄 AppRouter initializing...');
                 
-                // Check URL for invite token - handle different patterns
+                // IMPORTANT: Check authentication status FIRST
+                const existingAuth = localStorage.getItem('authToken');
+                const existingUser = localStorage.getItem('currentUser');
+                const existingCompany = localStorage.getItem('currentCompany');
+                
+                // If user is already authenticated, don't process invite tokens
+                if (existingAuth && existingUser && existingCompany) {
+                    console.log('✅ User already authenticated, staying in main app');
+                    setCurrentView('main');
+                    
+                    // Ensure main app is visible
+                    const mainApp = document.getElementById('main-app');
+                    const inviteApp = document.getElementById('invite-app');
+                    if (mainApp) mainApp.classList.add('active');
+                    if (inviteApp) inviteApp.classList.remove('active');
+                    return;
+                }
+                
+                // Check URL for invite token only if not authenticated
                 const path = window.location.pathname;
                 const urlParams = new URLSearchParams(window.location.search);
                 
@@ -1689,9 +1707,6 @@
                 let foundToken = null;
 
                 // Priority order for token detection:
-                // 1. Query parameter ?token= (from 404.html redirect)
-                // 2. Query parameter ?invite= 
-                // 3. Path-based /invite/token
                 if (urlParams.get('token')) {
                     foundToken = urlParams.get('token');
                     console.log('📧 Found invite token from ?token parameter:', foundToken);
@@ -1727,7 +1742,6 @@
                 // Handle back button navigation
                 const handlePopState = () => {
                     console.log('🔙 Browser back/forward navigation detected');
-                    // If navigating back to main path, reset to main app
                     if (window.location.pathname === '/' || 
                         window.location.pathname === '/inventorypro-website/' ||
                         window.location.pathname.endsWith('/')) {
@@ -1739,14 +1753,15 @@
                 return () => window.removeEventListener('popstate', handlePopState);
             }, []);
 
+            // UPDATED: Better navigation to main with proper state management
             const navigateToMain = () => {
                 console.log('🏠 Navigating to main app');
                 setCurrentView('main');
                 setInviteToken(null);
                 
-                // Update URL without causing reload
+                // Clean URL first
                 const newUrl = window.location.origin + '/inventorypro-website/';
-                window.history.pushState({}, '', newUrl);
+                window.history.replaceState({}, '', newUrl);
                 
                 // Switch UI visibility
                 const mainApp = document.getElementById('main-app');
@@ -1754,12 +1769,19 @@
                 if (mainApp) mainApp.classList.add('active');
                 if (inviteApp) inviteApp.classList.remove('active');
                 
-                // Refresh main app if user was authenticated
+                // Check if user was authenticated during invite process
                 const token = localStorage.getItem('authToken');
                 if (token) {
+                    console.log('✅ User authenticated, initializing main app...');
+                    // Don't reload - just trigger the auth check directly
                     setTimeout(() => {
-                        window.location.reload();
-                    }, 100);
+                        if (window.checkAuthStatus) {
+                            window.checkAuthStatus();
+                        } else {
+                            // Fallback: gentle reload after ensuring URL is clean
+                            window.location.href = newUrl;
+                        }
+                    }, 200);
                 }
             };
 
@@ -1795,7 +1817,6 @@
                 try {
                     console.log('🌐 Attempting API validation for token:', inviteToken);
                     
-                    // Check if this is a fallback/demo token
                     if (inviteToken.startsWith('temp-')) {
                         console.log('🎮 Using fallback demo mode for token:', inviteToken);
                         const urlParams = new URLSearchParams(window.location.search);
@@ -1812,7 +1833,6 @@
                         return;
                     }
 
-                    // Try real API validation
                     const response = await fetch(`${API_BASE_URL}/api/invites/${inviteToken}`, {
                         method: 'GET',
                         headers: {
@@ -1833,7 +1853,6 @@
                 } catch (err) {
                     console.warn('❌ API validation error, using fallback:', err.message);
                     
-                    // Use fallback for any API errors (network, CORS, 404, etc.)
                     const urlParams = new URLSearchParams(window.location.search);
                     const roleFromUrl = urlParams.get('role') || 'user';
                     
@@ -1869,11 +1888,9 @@
                 try {
                     console.log('📝 Processing invite acceptance...');
                     
-                    // Handle fallback/demo tokens or API failures
                     if (inviteData.token.startsWith('temp-') || inviteData._isFallback) {
                         console.log('🎮 Processing as demo/fallback invite');
                         
-                        // Create demo auth data
                         const mockData = {
                             token: 'demo-token',
                             user: {
@@ -1898,15 +1915,15 @@
                         console.log('✅ Demo account created successfully');
                         setSuccess(true);
                         
-                        // Redirect after success message
+                        // UPDATED: Better redirect timing and handling
                         setTimeout(() => {
+                            console.log('🔄 Completing invite process and redirecting to dashboard...');
                             onComplete();
-                        }, 2000);
+                        }, 1500);
                         
                         return;
                     }
 
-                    // Try real API invite acceptance
                     console.log('🌐 Attempting real API invite acceptance...');
                     const response = await fetch(`${API_BASE_URL}/api/users/accept-invite`, {
                         method: 'POST',
@@ -1937,10 +1954,11 @@
                     
                     setSuccess(true);
                     
-                    // Redirect after success message
+                    // UPDATED: Better redirect timing and handling
                     setTimeout(() => {
+                        console.log('🔄 Completing invite process and redirecting to dashboard...');
                         onComplete();
-                    }, 2000);
+                    }, 1500);
 
                 } catch (err) {
                     console.error('❌ Error accepting invite:', err);
@@ -2002,7 +2020,7 @@
                                     Your account has been created successfully.
                                 </p>
                                 <p style={{fontSize: '14px', color: 'var(--gray-500)'}}>
-                                    Redirecting to your dashboard...
+                                    Taking you to your dashboard...
                                 </p>
                             </div>
                         </div>
@@ -2195,20 +2213,38 @@
             }
         }
 
-        // Authentication Functions
+        // Make checkAuthStatus available globally so React can call it
+        window.checkAuthStatus = checkAuthStatus;
+
+        // UPDATED: Better authentication checking with logging
         function checkAuthStatus() {
+            console.log('🔍 Checking authentication status...');
             const token = localStorage.getItem('authToken');
             const userData = localStorage.getItem('currentUser');
             const companyData = localStorage.getItem('currentCompany');
             
+            console.log('Auth check - Token:', token ? 'Present' : 'Missing');
+            console.log('Auth check - User data:', userData ? 'Present' : 'Missing');
+            console.log('Auth check - Company data:', companyData ? 'Present' : 'Missing');
+            
             if (token && userData && companyData) {
-                appState.currentUser = JSON.parse(userData);
-                appState.currentCompany = JSON.parse(companyData);
-                appState.isAuthenticated = true;
-                showMainApp();
-                loadData();
-                updateUI();
+                try {
+                    appState.currentUser = JSON.parse(userData);
+                    appState.currentCompany = JSON.parse(companyData);
+                    appState.isAuthenticated = true;
+                    
+                    console.log('✅ User authenticated as:', appState.currentUser.name);
+                    console.log('✅ Company:', appState.currentCompany.name);
+                    
+                    showMainApp();
+                    loadData();
+                    updateUI();
+                } catch (error) {
+                    console.error('❌ Error parsing stored auth data:', error);
+                    showAuthView();
+                }
             } else {
+                console.log('❌ Missing auth data, showing auth view');
                 showAuthView();
             }
         }
