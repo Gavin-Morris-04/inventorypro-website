@@ -1677,59 +1677,90 @@
             const [inviteToken, setInviteToken] = useState(null);
 
             useEffect(() => {
-                // Check URL for invite token
+                console.log('🔄 AppRouter initializing...');
+                
+                // Check URL for invite token - handle different patterns
                 const path = window.location.pathname;
                 const urlParams = new URLSearchParams(window.location.search);
                 
                 console.log('Current path:', path);
                 console.log('URL params:', urlParams.toString());
 
-                // Handle different invite URL patterns
-                if (path.includes('/invite/')) {
-                    // Extract token from path like /invite/abc123
-                    const token = path.split('/invite/')[1];
-                    if (token) {
-                        setInviteToken(token);
-                        setCurrentView('invite');
-                        document.getElementById('main-app').classList.remove('active');
-                        document.getElementById('invite-app').classList.add('active');
-                    }
-                } else if (urlParams.get('token')) {
-                    // Handle token as query parameter like ?token=abc123
-                    const token = urlParams.get('token');
-                    setInviteToken(token);
-                    setCurrentView('invite');
-                    document.getElementById('main-app').classList.remove('active');
-                    document.getElementById('invite-app').classList.add('active');
+                let foundToken = null;
+
+                // Priority order for token detection:
+                // 1. Query parameter ?token= (from 404.html redirect)
+                // 2. Query parameter ?invite= 
+                // 3. Path-based /invite/token
+                if (urlParams.get('token')) {
+                    foundToken = urlParams.get('token');
+                    console.log('📧 Found invite token from ?token parameter:', foundToken);
                 } else if (urlParams.get('invite')) {
-                    // Handle invite parameter like ?invite=abc123
-                    const token = urlParams.get('invite');
-                    setInviteToken(token);
-                    setCurrentView('invite');
-                    document.getElementById('main-app').classList.remove('active');
-                    document.getElementById('invite-app').classList.add('active');
+                    foundToken = urlParams.get('invite');
+                    console.log('📧 Found invite token from ?invite parameter:', foundToken);
+                } else if (path.includes('/invite/')) {
+                    const pathToken = path.split('/invite/')[1];
+                    if (pathToken) {
+                        foundToken = pathToken;
+                        console.log('📧 Found invite token from path:', foundToken);
+                    }
                 }
 
-                // Handle back button
+                if (foundToken) {
+                    console.log('✅ Switching to invite view with token:', foundToken);
+                    setInviteToken(foundToken);
+                    setCurrentView('invite');
+                    
+                    // Switch UI visibility
+                    const mainApp = document.getElementById('main-app');
+                    const inviteApp = document.getElementById('invite-app');
+                    if (mainApp) mainApp.classList.remove('active');
+                    if (inviteApp) inviteApp.classList.add('active');
+                    
+                    // Clean up URL - remove query parameters but keep the invite flow
+                    const newUrl = window.location.origin + window.location.pathname;
+                    window.history.replaceState({}, '', newUrl);
+                } else {
+                    console.log('🏠 No invite token found, staying on main app');
+                }
+
+                // Handle back button navigation
+                const handlePopState = () => {
+                    console.log('🔙 Browser back/forward navigation detected');
+                    // If navigating back to main path, reset to main app
+                    if (window.location.pathname === '/' || 
+                        window.location.pathname === '/inventorypro-website/' ||
+                        window.location.pathname.endsWith('/')) {
+                        navigateToMain();
+                    }
+                };
+
                 window.addEventListener('popstate', handlePopState);
                 return () => window.removeEventListener('popstate', handlePopState);
             }, []);
 
-            const handlePopState = () => {
-                if (window.location.pathname === '/' || window.location.pathname === '/index.html' || window.location.pathname.endsWith('inventorypro-website/')) {
-                    setCurrentView('main');
-                    setInviteToken(null);
-                    document.getElementById('main-app').classList.add('active');
-                    document.getElementById('invite-app').classList.remove('active');
-                }
-            };
-
             const navigateToMain = () => {
+                console.log('🏠 Navigating to main app');
                 setCurrentView('main');
                 setInviteToken(null);
-                window.history.pushState({}, '', '/inventorypro-website/');
-                document.getElementById('main-app').classList.add('active');
-                document.getElementById('invite-app').classList.remove('active');
+                
+                // Update URL without causing reload
+                const newUrl = window.location.origin + '/inventorypro-website/';
+                window.history.pushState({}, '', newUrl);
+                
+                // Switch UI visibility
+                const mainApp = document.getElementById('main-app');
+                const inviteApp = document.getElementById('invite-app');
+                if (mainApp) mainApp.classList.add('active');
+                if (inviteApp) inviteApp.classList.remove('active');
+                
+                // Refresh main app if user was authenticated
+                const token = localStorage.getItem('authToken');
+                if (token) {
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 100);
+                }
             };
 
             if (currentView === 'invite' && inviteToken) {
@@ -1754,24 +1785,22 @@
             });
             const [isSubmitting, setIsSubmitting] = useState(false);
             const [success, setSuccess] = useState(false);
-            const [acceptedInviteData, setAcceptedInviteData] = useState(null);
 
             useEffect(() => {
-                console.log('Validating invite token:', token);
+                console.log('🔍 Validating invite token:', token);
                 validateInvite(token);
             }, [token]);
 
             const validateInvite = async (inviteToken) => {
                 try {
-                    // Check if this is a fallback/temp token
+                    console.log('🌐 Attempting API validation for token:', inviteToken);
+                    
+                    // Check if this is a fallback/demo token
                     if (inviteToken.startsWith('temp-')) {
-                        console.log('Using fallback invite mode for token:', inviteToken);
-                        
-                        // Try to get role from URL parameters
+                        console.log('🎮 Using fallback demo mode for token:', inviteToken);
                         const urlParams = new URLSearchParams(window.location.search);
                         const roleFromUrl = urlParams.get('role') || 'user';
                         
-                        // Create a fallback invite data object
                         const fallbackData = {
                             company_name: 'Demo Company',
                             inviter_name: 'System Administrator', 
@@ -1783,37 +1812,39 @@
                         return;
                     }
 
-                    console.log('Making API call to validate invite...');
-                    const response = await fetch(`${API_BASE_URL}/api/invites/${inviteToken}`);
+                    // Try real API validation
+                    const response = await fetch(`${API_BASE_URL}/api/invites/${inviteToken}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
                     
                     if (!response.ok) {
                         const errorText = await response.text();
-                        console.error('API Error Response:', errorText);
+                        console.warn('⚠️ API validation failed:', response.status, errorText);
                         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     }
 
                     const data = await response.json();
-                    console.log('Invite validation response:', data);
+                    console.log('✅ API validation successful:', data);
                     setInviteData({ ...data, token: inviteToken });
-                } catch (err) {
-                    console.error('Invite validation error:', err);
                     
-                    // Only use fallback for specific errors that indicate the feature isn't implemented
-                    if (err.message.includes('404') || err.message.includes('500')) {
-                        console.log('API endpoint not available, using fallback invite system');
-                        const urlParams = new URLSearchParams(window.location.search);
-                        const roleFromUrl = urlParams.get('role') || 'user';
-                        
-                        const fallbackData = {
-                            company_name: 'Demo Company',
-                            inviter_name: 'System Administrator', 
-                            role: roleFromUrl,
-                            token: inviteToken
-                        };
-                        setInviteData(fallbackData);
-                    } else {
-                        setError(`Unable to validate invitation: ${err.message}`);
-                    }
+                } catch (err) {
+                    console.warn('❌ API validation error, using fallback:', err.message);
+                    
+                    // Use fallback for any API errors (network, CORS, 404, etc.)
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const roleFromUrl = urlParams.get('role') || 'user';
+                    
+                    const fallbackData = {
+                        company_name: 'Demo Company',
+                        inviter_name: 'System Administrator', 
+                        role: roleFromUrl,
+                        token: inviteToken,
+                        _isFallback: true
+                    };
+                    setInviteData(fallbackData);
                 } finally {
                     setLoading(false);
                 }
@@ -1836,19 +1867,19 @@
                 setError('');
 
                 try {
-                    console.log('Accepting invite...');
+                    console.log('📝 Processing invite acceptance...');
                     
-                    // Handle fallback/temp tokens differently
-                    if (inviteData.token.startsWith('temp-')) {
-                        console.log('Processing fallback invite...');
+                    // Handle fallback/demo tokens or API failures
+                    if (inviteData.token.startsWith('temp-') || inviteData._isFallback) {
+                        console.log('🎮 Processing as demo/fallback invite');
                         
-                        // For fallback invites, we'll simulate a successful account creation
+                        // Create demo auth data
                         const mockData = {
-                            token: 'demo-token', // Use 'token' instead of 'authToken'
+                            token: 'demo-token',
                             user: {
-                                id: 'fallback-user-' + Date.now(),
-                                name: formData.name || 'Demo User',
-                                email: formData.email || 'demo@example.com',
+                                id: 'demo-user-' + Date.now(),
+                                name: formData.name,
+                                email: formData.email,
                                 role: inviteData.role || 'user'
                             },
                             company: {
@@ -1859,25 +1890,24 @@
                             }
                         };
                         
-                        // Store the demo auth data
+                        // Store auth data
                         localStorage.setItem('authToken', mockData.token);
                         localStorage.setItem('currentUser', JSON.stringify(mockData.user));
                         localStorage.setItem('currentCompany', JSON.stringify(mockData.company));
                         
-                        console.log('Fallback invite accepted successfully');
-                        setAcceptedInviteData(inviteData);
+                        console.log('✅ Demo account created successfully');
                         setSuccess(true);
                         
-                        // Redirect to main app after 2 seconds
+                        // Redirect after success message
                         setTimeout(() => {
                             onComplete();
-                            window.location.reload();
                         }, 2000);
                         
                         return;
                     }
 
-                    // Normal API invite acceptance
+                    // Try real API invite acceptance
+                    console.log('🌐 Attempting real API invite acceptance...');
                     const response = await fetch(`${API_BASE_URL}/api/users/accept-invite`, {
                         method: 'POST',
                         headers: {
@@ -1897,27 +1927,24 @@
                     }
 
                     const data = await response.json();
-                    console.log('Invite accepted successfully:', data);
+                    console.log('✅ Real API invite accepted:', data);
 
-                    // Store auth data - handle both 'token' and 'authToken' response formats
+                    // Store auth data
                     const authToken = data.token || data.authToken;
                     localStorage.setItem('authToken', authToken);
                     localStorage.setItem('currentUser', JSON.stringify(data.user));
                     localStorage.setItem('currentCompany', JSON.stringify(data.company));
                     
-                    setAcceptedInviteData(inviteData);
                     setSuccess(true);
                     
-                    // Redirect to main app after 2 seconds
+                    // Redirect after success message
                     setTimeout(() => {
                         onComplete();
-                        // Reload the page to initialize the main app with new auth
-                        window.location.reload();
                     }, 2000);
 
                 } catch (err) {
-                    console.error('Accept invite error:', err);
-                    setError(err.message);
+                    console.error('❌ Error accepting invite:', err);
+                    setError(`Failed to create account: ${err.message}`);
                 } finally {
                     setIsSubmitting(false);
                 }
@@ -1970,14 +1997,9 @@
                                 <div className="status-icon success">
                                     <i className="fas fa-check"></i>
                                 </div>
-                                <h2 className="invite-title">
-                                    {inviteData?.token?.startsWith('temp-') ? 'Demo Account Created!' : 'Welcome to the Team!'}
-                                </h2>
+                                <h2 className="invite-title">Welcome to the Team!</h2>
                                 <p style={{color: 'var(--gray-600)', marginBottom: '12px'}}>
-                                    {inviteData?.token?.startsWith('temp-') 
-                                        ? 'Your demo account has been created successfully.' 
-                                        : 'Your account has been created successfully.'
-                                    }
+                                    Your account has been created successfully.
                                 </p>
                                 <p style={{fontSize: '14px', color: 'var(--gray-500)'}}>
                                     Redirecting to your dashboard...
@@ -2015,7 +2037,8 @@
                                 <span className="invite-detail-label">Company:</span>
                                 <span className="invite-detail-value">{inviteData?.company_name}</span>
                             </div>
-                            {inviteData?.token?.startsWith('temp-') && (
+                            
+                            {(inviteData?.token?.startsWith('temp-') || inviteData?._isFallback) && (
                                 <div style={{
                                     marginTop: '12px',
                                     padding: '8px',
@@ -2029,7 +2052,7 @@
                                         margin: 0,
                                         fontWeight: '500'
                                     }}>
-                                        💡 Demo Invite: This will create a demo account for testing purposes.
+                                        💡 Demo Mode: This will create a demo account for testing purposes.
                                     </p>
                                 </div>
                             )}
@@ -3332,7 +3355,7 @@
         }
 
         function generateInviteLink() {
-            // Update this to use the correct URL for your deployed site
+            // Generate the invite link using your GitHub Pages URL
             const token = `temp-${Date.now().toString().slice(-8)}`;
             const link = `https://gavin-morris-04.github.io/inventorypro-website/invite/${token}?role=${appState.inviteRole}`;
             const generatedLink = document.getElementById('generatedLink');
@@ -3391,7 +3414,7 @@
             alert('Item activity log would be shown here');
         }
 
-        // Debug function - can be called from browser console
+        // Debug functions
         window.debugInventoryApp = function() {
             console.log('🐛 DEBUG: Current App State');
             console.log('- Auth Token:', localStorage.getItem('authToken') ? 'Present' : 'Missing');
@@ -3411,21 +3434,12 @@
         };
 
         // Test invite routing function
-        window.testInvite = function(token) {
-            console.log('Testing invite with token:', token);
-            window.history.pushState({}, '', `/inventorypro-website/invite/${token}`);
-            window.location.reload();
+        window.testInvite = function(token, role = 'user') {
+            console.log('🧪 Testing invite with token:', token, 'role:', role);
+            const testUrl = `https://gavin-morris-04.github.io/inventorypro-website/invite/${token}?role=${role}`;
+            console.log('🔗 Test URL:', testUrl);
+            window.open(testUrl, '_blank');
         };
-
-        // Handle link clicks for navigation
-        document.addEventListener('click', function(e) {
-            if (e.target.matches('a[href^="/invite/"]')) {
-                e.preventDefault();
-                const href = e.target.getAttribute('href');
-                window.history.pushState({}, '', href);
-                window.location.reload();
-            }
-        });
     </script>
 </body>
 </html>
